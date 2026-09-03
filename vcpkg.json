@@ -1,7 +1,7 @@
 {
   "name" : "net-lib",
   "version-string" : "0.1",
-  "dependencies" : [ "curl", "libiconv", "libmysql", {
+  "dependencies" : [ "curl", "libiconv", "libmysql", "tracy", {
     "name" : "range-v3",
     "version>=" : "0.12.0#2"
   }, {
