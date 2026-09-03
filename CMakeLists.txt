@@ -75,10 +75,6 @@ else()
 endif()
 
 
-##### 외부 패키지
-find_package(range-v3 REQUIRED)
-target_link_libraries(NetLib PUBLIC range-v3)
-
 #인클루드 설정
 
 target_include_directories(NetLib INTERFACE include include/externalHeader)

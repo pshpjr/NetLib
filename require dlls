@@ -1,7 +1,3 @@
-cpp_redis.lib
-cpp_redis.pdb
-cpp_redis_d.lib
-cpp_redis_d.pdb
 dpp.dll
 dpp.lib
 libcrypto-1_1-x64.dll
@@ -26,10 +22,6 @@ mysqlclient.lib
 NetLib.lib
 NetLib_d.lib
 opus.dll
-tacopie.dll
-tacopie.lib
-tacopie.pdb
-tacopie_d.lib
 zlib1.dll
 
 //mysql이랑
