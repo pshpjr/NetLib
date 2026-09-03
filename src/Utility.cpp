@@ -9,7 +9,10 @@
 
 #include "concurrentqueue.h"
 #include "dpp/exception.h"
+
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 
 std::string psh::util::WToS(const std::wstring &wstr)
 {
@@ -81,3 +84,5 @@ void* psh::util::TlsGet(TlsKey key)
     return ::pthread_getspecific(key);
 #endif
 }
+
+

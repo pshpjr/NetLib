@@ -2,6 +2,7 @@
 #include <list>
 #include "SingleThreadObjectPool.h"
 #include "LockFreeStack.h"
+#include "Utility.h"
 
 constexpr int TLS_POOL_INITIAL_SIZE = 5'000;
 constexpr int GLOBAL_POOL_MULTIPLIER = 10;
@@ -41,7 +42,7 @@ public:
 #endif
 
         InitializeCriticalSection(&_cs);
-        _localPoolTlsIndex = TlsAlloc();
+        psh::util::TlsAlloc(_localPoolTlsIndex);
 
         _pooledNodeSize = _globalPoolMultiplier;
 
@@ -133,12 +134,12 @@ public:
 
     T* Alloc()
     {
-        poolType* pool = static_cast<poolType*>(TlsGetValue(_localPoolTlsIndex));
+        poolType* pool = static_cast<poolType*>(psh::util::TlsGet(_localPoolTlsIndex));
 
         if (pool == nullptr)
         {
             pool = new poolType(0);
-            TlsSetValue(_localPoolTlsIndex, pool);
+            psh::util::TlsSet(_localPoolTlsIndex, pool);
         }
 
         if (pool->GetObjectCount() == 0)
@@ -154,12 +155,12 @@ public:
     void Free(T* data)
     {
         //PRO_BEGIN("FREE")
-        poolType* pool = static_cast<poolType*>(TlsGetValue(_localPoolTlsIndex));
+        poolType* pool = static_cast<poolType*>(psh::util::TlsGet(_localPoolTlsIndex));
 
         if (pool == nullptr)
         {
             pool = new poolType(0);
-            TlsSetValue(_localPoolTlsIndex, pool);
+            psh::util::TlsSet(_localPoolTlsIndex, pool);
         }
 
         pool->Free(data);
@@ -213,7 +214,7 @@ private:
 
     LockFreeStack<controlData> _nextBucket;
 
-    inline static DWORD _localPoolTlsIndex = 0;
+    inline static psh::util::TlsKey _localPoolTlsIndex = 0;
     Node* _top = nullptr;
     long _pooledNodeSize = 0;
     inline static long gPoolID;
