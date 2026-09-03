@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <atomic>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -127,8 +128,8 @@ protected:
     bool _checkTiemout = true;
     void* _this = nullptr;
     char _staticKey = 0;
-    char gracefulEnd = false;
-    char _isRunning = false;
+    std::atomic_bool gracefulEnd = false;
+    std::atomic_bool _isRunning = false;
 
     /*
     *
@@ -153,7 +154,7 @@ protected:
     psh::uint32 _acceptErrorCount = 0;
     long _iocpCompBufferSize = 0;
 
-    //vector<threadMonitor> _threadMonitors;
+    //std::vector<threadMonitor> _threadMonitors;
     std::unique_ptr<MemoryUsage> _memMonitor;
     std::unique_ptr<CCpuUsage>  _cpuMonitor;
 

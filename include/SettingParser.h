@@ -1,5 +1,7 @@
 ﻿#pragma once
+#include <algorithm>
 #include <optional>
+
 #include "Types.h"
 #include "Container.h"
 #include "Macro.h"
@@ -68,7 +70,7 @@ public:
         else if constexpr (std::is_same_v<T, std::string>)
         {
             std::string str(resultStr.length(), 0);
-            std::transform(resultStr.begin(), resultStr.end(), str.begin(),
+            std::ranges::transform(resultStr.begin(), resultStr.end(), str.begin(),
                 [](const wchar_t c)
                 {
                     return static_cast<char>(c);

@@ -4,7 +4,6 @@ project(NetLib)
 #cmake 관련 속성 설정
 set(CMAKE_CXX_STANDARD 20)
 
-#소스 추가
 add_library(NetLib INTERFACE)
 target_sources(NetLib INTERFACE
         src/Utility.cpp

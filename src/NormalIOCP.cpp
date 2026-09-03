@@ -1,7 +1,4 @@
-﻿#include "NormalIOCP.h"
-
-#include <synchapi.h>
-
+#include "NormalIOCP.h"
 
 #include <CCpuUsage.h>
 #include <chrono>
@@ -197,8 +194,8 @@ bool IOCP::Init(const String& ip
 
 void IOCP::Start()
 {
-    InterlockedExchange8(&_isRunning, true);
-    WakeByAddressAll(&_isRunning);
+    _isRunning = true;
+    _isRunning.notify_all();
     OnStart();
 }
 
@@ -248,21 +245,14 @@ void IOCP::Stop()
         }
     }
 
-    InterlockedExchange8(&gracefulEnd, true);
+    gracefulEnd = true;
     OnEnd();
-    WakeByAddressSingle(&gracefulEnd);
+    gracefulEnd.notify_one();
 }
 
 void IOCP::Wait()
 {
-    char unExpect = false;
-    char capture = gracefulEnd;
-
-    while (capture == unExpect)
-    {
-        WaitOnAddress(&gracefulEnd, &unExpect, sizeof(unExpect), INFINITE);
-        capture = gracefulEnd;
-    }
+    gracefulEnd.wait(false);
 }
 
 void IOCP::SetTimeout(const SessionID sessionId, const int timeoutMillisecond)
@@ -551,7 +541,7 @@ void IOCP::onRecvPacket(const Session& session, CRecvBuffer& buffer)
 
 bool IOCP::isEnd() const
 {
-    return gracefulEnd;
+    return gracefulEnd.load();
 }
 
 void IOCP::SetMaxPacketSize(const int size)
@@ -1179,11 +1169,5 @@ unsigned short NormalIOCP::GetSessionIndex(const SessionID sessionID)
 
 void NormalIOCP::WaitStart()
 {
-    char unDesire = false;
-    char cur = _isRunning;
-    while (unDesire == cur)
-    {
-        WaitOnAddress(&_isRunning, &unDesire, sizeof(char), INFINITE);
-        cur = _isRunning;
-    }
+    _isRunning.wait(false);
 }

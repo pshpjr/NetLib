@@ -24,6 +24,8 @@ Group::Group()
 {
 }
 
+Group::~Group() = default;
+
 psh::int64 Group::GetWorkTime() const
 {
     return oldWorkTime;

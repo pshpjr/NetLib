@@ -1,3 +1,5 @@
+#include <atomic>
+
 //deprecated
 class WaitExecutable : public Executable
 {
@@ -9,20 +11,19 @@ public:
         _execute(key, iocp);
 
         isDone = true;
-        WakeByAddressSingle(&isDone);
+        isDone.notify_one();
     }
 
     void Join()
     {
-        char expect = false;
-        WaitOnAddress(&isDone, &expect, sizeof(long), INFINITE);
+        isDone.wait(false);
     }
 
 protected:
     virtual void _execute(ULONG_PTR key, void* iocp) = 0;
 
 private:
-    char isDone = false;
+    std::atomic_bool isDone = false;
 };
 
 //deprecated
@@ -56,5 +57,5 @@ public:
 
 private:
     HANDLE _iocp = INVALID_HANDLE_VALUE;
-    vector<T> _executables;
+    std::vector<T> _executables;
 };

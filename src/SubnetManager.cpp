@@ -1,4 +1,6 @@
 ﻿#include "SubnetManager.h"
+
+#include <algorithm>
 #include "Socket.h"
 #include "stdafx.h"
 

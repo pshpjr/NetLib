@@ -17,3 +17,4 @@ lib
 /.vs
 /build
 /out/build/x64-Debug
+/vcpkg_installed/x64-windows

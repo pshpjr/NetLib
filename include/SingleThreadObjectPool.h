@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <cstddef>
 #include <new.h>
 #include "Macro.h"
 class Node;

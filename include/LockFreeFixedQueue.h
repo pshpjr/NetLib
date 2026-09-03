@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include <atomic>
+
 #include "Container.h"
 
 template <typename T, int BufferSize>
@@ -8,7 +10,7 @@ class LockFreeFixedQueue
 
     struct Node
     {
-        char isUsed = 0;
+        std::atomic<bool> isUsed = false;
         T data = T();
     };
 
@@ -28,8 +30,8 @@ public:
 
     int Size() const
     {
-        auto head = headIndex & indexMask;
-        auto tail = tailIndex & indexMask;
+        auto head = headIndex.load() & indexMask;
+        auto tail = tailIndex.load() & indexMask;
 
         if (tail >= head)
         {
@@ -41,17 +43,17 @@ public:
 
     bool Enqueue(const T& data)
     {
-        const long tail = InterlockedIncrement(&tailIndex) - 1;
+        const long tail = tailIndex.fetch_add(1);
 
         //while () {};
 
-        if (buffer[tail & indexMask].isUsed == 1)
+        if (buffer[tail & indexMask].isUsed.load())
         {
             return false;
         }
 
         buffer[tail & indexMask].data = data;
-        if (InterlockedExchange8(&buffer[tail & indexMask].isUsed, 1) == 1)
+        if (buffer[tail & indexMask].isUsed.exchange(true))
         {
             __debugbreak();
         }
@@ -63,14 +65,14 @@ public:
         long head;
         for (;;)
         {
-            head = headIndex;
+            head = headIndex.load();
 
-            if (buffer[head & indexMask].isUsed == false)
+            if (!buffer[head & indexMask].isUsed.load())
             {
                 return false;
             }
 
-            if (InterlockedCompareExchange(&headIndex, head + 1, head) == head)
+            if (headIndex.compare_exchange_weak(head, head + 1))
             {
                 break;
             }
@@ -82,7 +84,7 @@ public:
             buffer[head & indexMask].~T();
         }
         
-        if (InterlockedExchange8(&buffer[head & indexMask].isUsed, false) == false)
+        if (!buffer[head & indexMask].isUsed.exchange(false))
         {
             __debugbreak();
         }
@@ -90,8 +92,8 @@ public:
     }
 
 #pragma warning (disable : 4324)
-    alignas( 64 ) long headIndex = 0;
-    alignas( 64 ) long tailIndex = 0;
+    alignas( 64 ) std::atomic<long> headIndex = 0;
+    alignas( 64 ) std::atomic<long> tailIndex = 0;
 #pragma warning (default : 4324)
     int indexMask;
     Vector<Node> buffer;
