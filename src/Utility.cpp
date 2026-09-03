@@ -8,7 +8,7 @@
 #include <locale>
 
 #include "concurrentqueue.h"
-#include "dpp/exception.h"
+
 
 #ifdef _WIN32
 #include <Windows.h>

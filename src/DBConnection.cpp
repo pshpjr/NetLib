@@ -1,7 +1,7 @@
 #include "DBConnection.h"
 #include "DBException.h"
 #include "Macro.h"
-#include "externalHeader/mysql.h"
+#include <mysql/mysql.h>
 
 struct DBConnection::Imple
 {

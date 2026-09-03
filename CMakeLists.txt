@@ -106,13 +106,15 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     file(GLOB EXTERNAL_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/release/*.lib")
 endif ()
 
-list(FILTER EXTERNAL_LIBS EXCLUDE REGEX "(cpp_redis|tacopie)")
+list(FILTER EXTERNAL_LIBS INCLUDE REGEX "OptickCore")
 foreach (lib ${EXTERNAL_LIBS})
     target_link_libraries(NetLib INTERFACE ${lib})
 endforeach ()
 
+find_package(CURL REQUIRED)
+find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
-target_link_libraries(NetLib PRIVATE redis++::redis++)
+target_link_libraries(NetLib PRIVATE CURL::libcurl unofficial::libmysql::libmysql redis++::redis++)
 
 # 외부 패키지 링크 설정s
 
