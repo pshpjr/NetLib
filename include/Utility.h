@@ -68,12 +68,21 @@ namespace psh::util
         State state_;
         std::variant<valueType, errorType> variant_;
     };
-
-
-
 }
 
+namespace psh::util
+{
+#ifdef _WIN32
+    using TlsKey = std::int32_t;
+#else
+    using TlsKey = pthread_key_t;
+#endif
 
+    bool TlsAlloc(TlsKey& outKey);
+    void TlsFree(TlsKey key);
+    bool TlsSet(TlsKey key, void* value);
+    void* TlsGet(TlsKey key);
+}
 
 
 #endif //UTILITY_H
