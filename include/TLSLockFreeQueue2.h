@@ -1,30 +1,32 @@
 ﻿#pragma once
 #include "Container.h"
+#include "Utility.h"
 #include <TLSLockFreeQueue.h>
 
 template <typename T>
 class TLSLockFreeQueue2
 {
 public:
-	TLSLockFreeQueue2() : _tlsIndex(TlsAlloc())
+	TLSLockFreeQueue2()
 	{
+		psh::util::TlsAlloc(_tlsIndex);
 		InitializeSRWLock(&_queueListLock);
 	}
 
-	~TLSLockFreeQueue2() { TlsFree(_tlsIndex); }
+	~TLSLockFreeQueue2() { psh::util::TlsFree(_tlsIndex); }
 
 	void enqueue(T data)
 	{
 		TLSLockFreeQueue<T>* queue;
 		{
-			queue = ( TLSLockFreeQueue<T>* ) TlsGetValue(_tlsIndex);
+			queue = ( TLSLockFreeQueue<T>* ) psh::util::TlsGet(_tlsIndex);
 		}
 
 		if ( queue == nullptr )
 		{
 
 			queue = new TLSLockFreeQueue<T>();
-			TlsSetValue(_tlsIndex,queue);
+			psh::util::TlsSet(_tlsIndex,queue);
 
 			AcquireSRWLockExclusive(&_queueListLock);
 
@@ -67,7 +69,7 @@ public:
 
 private:
 	inline static thread_local int lastQueueIndex = 0;
-	int _tlsIndex;
+	psh::util::TlsKey _tlsIndex;
 	long _queueCount = 0;
 
 	std::vector<TLSLockFreeQueue<T>*> queues;

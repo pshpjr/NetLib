@@ -8,6 +8,7 @@
 #include "LockGuard.h"
 #include "Macro.h"
 #include "Types.h"
+#include "Utility.h"
 
 class ProfileManager;
 class ProfileItem;
@@ -98,7 +99,7 @@ public:
             L"profile_%d-%d-%d_%2d%2d_%x.txt",
             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, std::this_thread::get_id());
         ProfileDataOutText(buffer);
-        TlsFree(TLSNum);
+        psh::util::TlsFree(TLSNum);
     }
 
     static ProfileManager& Get()
@@ -109,12 +110,12 @@ public:
 
     Profiler& GetLocalProfiler()
     {
-        auto ret = static_cast<Profiler*>(TlsGetValue(TLSNum));
+        auto ret = static_cast<Profiler*>(psh::util::TlsGet(TLSNum));
 
         if (ret == nullptr)
         {
             ret = new Profiler;
-            TlsSetValue(TLSNum, ret);
+            psh::util::TlsSet(TLSNum, ret);
 
             WRITE_LOCK;
             _profilerList.push_front(ret);
@@ -154,7 +155,7 @@ public:
 
     void setTLSNum()
     {
-        TLSNum = TlsAlloc();
+        psh::util::TlsAlloc(TLSNum);
     }
 
 private:
@@ -167,7 +168,7 @@ private:
 
     //SRWLOCK _profileListLock;
     std::wstring optionalText;
-    DWORD TLSNum;
+    psh::util::TlsKey TLSNum;
 };
 
 

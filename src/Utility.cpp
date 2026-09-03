@@ -7,6 +7,10 @@
 #include <codecvt>
 #include <locale>
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 std::string psh::util::WToS(const std::wstring &wstr)
 {
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;

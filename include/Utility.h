@@ -4,8 +4,13 @@
 
 #ifndef UTILITY_H
 #define UTILITY_H
+#include <cstdint>
 #include <string>
 #include <variant>
+
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 
 namespace psh::util
 {
@@ -73,7 +78,7 @@ namespace psh::util
 namespace psh::util
 {
 #ifdef _WIN32
-    using TlsKey = std::int32_t;
+    using TlsKey = std::uint32_t;
 #else
     using TlsKey = pthread_key_t;
 #endif
