@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.28)
 project(NetLib)
 # C++ 표준 설정
 set(CMAKE_CXX_STANDARD 20)
-#
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(-translateInclude)
     add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
@@ -88,13 +88,16 @@ target_link_libraries(NetLib PUBLIC
         Psapi
         kernel32
 )
+
 file(GLOB PUB_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib")
 foreach (lib ${PUB_LIBS})
     target_link_libraries(NetLib INTERFACE ${lib})
 endforeach ()
 
-
 # 빌드 타입에 따른 외부 라이브러리 링크
+if (CMAKE_CONFIGURATION_TYPES STREQUAL "")
+    # no-op
+endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     file(GLOB EXTERNAL_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/debug/*.lib")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -103,9 +106,13 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     file(GLOB EXTERNAL_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/release/*.lib")
 endif ()
 
+list(FILTER EXTERNAL_LIBS EXCLUDE REGEX "(cpp_redis|tacopie)")
 foreach (lib ${EXTERNAL_LIBS})
     target_link_libraries(NetLib INTERFACE ${lib})
 endforeach ()
+
+find_package(redis++ CONFIG REQUIRED)
+target_link_libraries(NetLib PRIVATE redis++::redis++)
 
 # 외부 패키지 링크 설정s
 
