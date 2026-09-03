@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "BuildOption.h"
 #include "GroupManager.h"
@@ -139,10 +139,6 @@ public:
     size_t GetPMemSize() const;
     size_t GetPeakVirtualMemSize() const;
     size_t GetVirtualMemSize() const;
-    size_t GetPeakPagedPoolUsage() const;
-    size_t GetPeakNonPagedPoolUsage() const;
-    size_t GetPagedPoolUsage() const;
-    size_t GetNonPagedPoolUsage() const;
 
     String GetLibMonitorString() const;
     void PrintMonitorString() const;

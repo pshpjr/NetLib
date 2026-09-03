@@ -689,25 +689,9 @@ size_t IOCP::GetVirtualMemSize() const
     return _memMonitor->GetVirtualMemSize();
 }
 
-size_t IOCP::GetPeakPagedPoolUsage() const
-{
-    return _memMonitor->GetPeakPagedPoolUsage();
-}
 
-size_t IOCP::GetPeakNonPagedPoolUsage() const
-{
-    return _memMonitor->GetPeakNonPagedPoolUsage();
-}
 
-size_t IOCP::GetPagedPoolUsage() const
-{
-    return _memMonitor->GetPagedPoolUsage();
-}
 
-size_t IOCP::GetNonPagedPoolUsage() const
-{
-    return _memMonitor->GetNonPagedPoolUsage();
-}
 
 String IOCP::GetLibMonitorString() const
 {

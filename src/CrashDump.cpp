@@ -1,6 +1,5 @@
-﻿#include "CrashDump.h"
-
-#include <psapi.h>
+#include "CrashDump.h"
+#include "MemoryUsage.h"
 
 #include <crtdbg.h>
 #include <DbgHelp.h>
@@ -40,19 +39,9 @@ LONG CrashDump::ExceptionFilter(const PEXCEPTION_POINTERS pExceptionPointer)
 
     const long DumpCount = InterlockedIncrement(&_dumpCount);
 
-    const HANDLE hProcess = GetCurrentProcess();
-    if (hProcess == nullptr)
-    {
-        return 0;
-    }
-
-    PROCESS_MEMORY_COUNTERS pmc;
-
-    if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
-    {
-        iWorkingMemory = pmc.WorkingSetSize;
-    }
-    CloseHandle(hProcess);
+    MemoryUsage memoryUsage;
+    memoryUsage.Update();
+    iWorkingMemory = memoryUsage.GetPMemSize();
 
     WCHAR szFileName[MAX_PATH] = {0,};
     GetLocalTime(&st);

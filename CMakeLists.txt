@@ -79,8 +79,14 @@ endif()
 
 target_include_directories(NetLib INTERFACE include include/externalHeader)
 
-#라이브러리 링킹
-target_link_libraries(NetLib INTERFACE Synchronization.lib Winmm.lib Ws2_32.lib Dbghelp.lib Psapi.lib)
+# 플랫폼별 시스템 라이브러리
+if(WIN32)
+    target_link_libraries(NetLib INTERFACE Ws2_32 Dbghelp Kernel32)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # MemoryUsage는 /proc를 사용하므로 별도 시스템 라이브러리가 필요하지 않습니다.
+else()
+    message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+endif()
 
 
 find_package(CURL REQUIRED)
