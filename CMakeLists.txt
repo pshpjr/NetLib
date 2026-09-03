@@ -84,7 +84,6 @@ target_link_libraries(NetLib PUBLIC
         ws2_32
         wsock32
         Winmm
-        Pdh
         Synchronization
         Dbghelp
         Psapi
