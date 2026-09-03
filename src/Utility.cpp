@@ -4,8 +4,7 @@
 
 #include "Utility.h"
 
-#include <codecvt>
-#include <locale>
+#include <iconv.hpp>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -13,8 +12,15 @@
 
 std::string psh::util::WToS(const std::wstring &wstr)
 {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-    return converter.to_bytes(wstr);
+    if (wstr.empty())
+        return {};
+
+    const std::string input(
+        reinterpret_cast<const char*>(wstr.data()),
+        wstr.size() * sizeof(wchar_t));
+    std::string output;
+    iconvpp::converter("UTF-8", "WCHAR_T").convert(input, output);
+    return output;
 }
 
 bool psh::util::TlsAlloc(TlsKey& outKey)

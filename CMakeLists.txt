@@ -84,10 +84,12 @@ target_link_libraries(NetLib INTERFACE Synchronization.lib Winmm.lib Ws2_32.lib 
 
 
 find_package(CURL REQUIRED)
+find_package(Iconv REQUIRED)
 find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
 target_link_libraries(NetLib INTERFACE
         CURL::libcurl
+        Iconv::Iconv
         unofficial::libmysql::libmysql
 )
 target_link_libraries(NetLib INTERFACE redis++::redis++)
