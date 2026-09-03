@@ -1,78 +1,96 @@
 ﻿#include "RedisConnection.h"
-#include <optional>
+#include <chrono>
 
 #include "CLogger.h"
 #include "CoreGlobal.h"
-#include <cpp_redis/cpp_redis.h>
+#include <sw/redis++/redis++.h>
 
 struct RedisConnection::redisImple
 {
-    cpp_redis::client _conn;
-    cpp_redis::connect_state _status;
+    redisImple(const psh::LPCSTR ip, const psh::uint32 port, const psh::uint32 timeout)
+        : _conn{[=]
+        {
+            sw::redis::ConnectionOptions options;
+            options.host = ip;
+            options.port = static_cast<int>(port);
+            options.connect_timeout = std::chrono::milliseconds(timeout);
+            return options;
+        }()}
+    {
+    }
+
+    sw::redis::Redis _conn;
 };
 
+// maxReconnect와 reconnectInterval은 redis-plus-plus에서 사용하지 않으며 API 호환을 위해 남겨둔다.
 RedisConnection::RedisConnection(const psh::LPCSTR ip, const psh::uint32 port, const psh::uint32 timeout
-  , const psh::int32 maxReconnect, const psh::uint32 reconnectInterval): _imple{std::make_unique<redisImple>()}
+  , const psh::int32 maxReconnect, const psh::uint32 reconnectInterval)
+    : _imple{std::make_unique<redisImple>(ip, port, timeout)}
 {
-    _imple->_conn.connect(ip, port, nullptr, timeout, maxReconnect, reconnectInterval);
+
+    static_cast<void>(maxReconnect);
+    static_cast<void>(reconnectInterval);
 }
 
-RedisConnection::~RedisConnection()
-{
-    _imple->_conn.disconnect(false);
-}
+RedisConnection::~RedisConnection() = default;
 
 bool RedisConnection::Set(const std::string& key, const std::string& value)
 {
-    auto ret = _imple->_conn.set(key, value);
-    _imple->_conn.sync_commit();
-
-    return ret.get().ok();
+    try
+    {
+        return _imple->_conn.set(key, value);
+    }
+    catch (const sw::redis::Error&)
+    {
+        return false;
+    }
 }
 
 bool RedisConnection::Del(const std::string& key)
 {
-    std::string k(key.begin(), key.end());
-
-    auto ret = _imple->_conn.del({"DEL", key});
-    _imple->_conn.sync_commit();
-
-    return ret.get().ok();
+    try
+    {
+        _imple->_conn.del(key);
+        return true;
+    }
+    catch (const sw::redis::Error&)
+    {
+        return false;
+    }
 }
 
 
 
 bool RedisConnection::SetExpired(const std::string& key, const std::string& value, const int expireSec)
 {
-    auto ret = _imple->_conn.set_advanced(key, value, true, expireSec);
-    _imple->_conn.sync_commit();
-
-    return ret.get().ok();
+    try
+    {
+        return _imple->_conn.set(key, value, std::chrono::seconds(expireSec));
+    }
+    catch (const sw::redis::Error&)
+    {
+        return false;
+    }
 }
 
 std::optional<String> RedisConnection::Get(const std::string& key)
 {
-    auto result = _imple->_conn.get(key.c_str());
-    _imple->_conn.sync_commit();
-
-    const auto rep = result.get();
-
-    if (!rep.ok())
+    try
     {
-        return {};
-    }
+        const auto result = _imple->_conn.get(key);
 
-    if (rep.is_null())
+        if (!result)
+        {
+            const String wKey(key.begin(), key.end());
+            gLogger->Write(L"Redis", CLogger::LogLevel::Debug, L"invalid key %s", wKey.c_str());
+
+            return std::nullopt;
+        }
+
+        return String(result->begin(), result->end());
+    }
+    catch (const sw::redis::Error&)
     {
-        String wKey(key.length(), L'\n');
-        wKey.assign(key.begin(), key.end());
-        gLogger->Write(L"Redis", CLogger::LogLevel::Debug, L"invalid key %s", wKey.c_str());
-
-        return {};
+        return std::nullopt;
     }
-    auto cRet = rep.as_string();
-
-    String ret(cRet.begin(), cRet.end());
-
-    return ret;
 }

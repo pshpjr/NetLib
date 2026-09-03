@@ -7,6 +7,7 @@
 class RedisConnection
 {
 public:
+	//  MaxReconnect, ReconnectInterval은 사용하지 않음
     RedisConnection(const psh::LPCSTR ip
         , const psh::uint32 port
         , const psh::uint32 timeout = 0
