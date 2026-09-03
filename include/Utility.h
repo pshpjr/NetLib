@@ -4,9 +4,14 @@
 
 #ifndef UTILITY_H
 #define UTILITY_H
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <variant>
+
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 
 namespace psh::util
 {
@@ -96,5 +101,18 @@ namespace psh::util
     };
 }
 
+namespace psh::util
+{
+#ifdef _WIN32
+    using TlsKey = std::uint32_t;
+#else
+    using TlsKey = pthread_key_t;
+#endif
+
+    bool TlsAlloc(TlsKey& outKey);
+    void TlsFree(TlsKey key);
+    bool TlsSet(TlsKey key, void* value);
+    void* TlsGet(TlsKey key);
+}
 
 #endif //UTILITY_H
