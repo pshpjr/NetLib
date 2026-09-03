@@ -80,15 +80,16 @@ endif()
 target_include_directories(NetLib INTERFACE include include/externalHeader)
 
 #라이브러리 링킹
-file(GLOB EXTERNAL_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib")
-foreach(lib ${EXTERNAL_LIBS})
-    target_link_libraries(NetLib INTERFACE ${lib})
-endforeach()
-
 target_link_libraries(NetLib INTERFACE Synchronization.lib Winmm.lib Ws2_32.lib Dbghelp.lib Psapi.lib)
 
 
+find_package(CURL REQUIRED)
+find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
+target_link_libraries(NetLib INTERFACE
+        CURL::libcurl
+        unofficial::libmysql::libmysql
+)
 target_link_libraries(NetLib INTERFACE redis++::redis++)
 
 option(NETLIB_BUILD_TESTS "Build NetLib tests" ${PROJECT_IS_TOP_LEVEL})
