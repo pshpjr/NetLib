@@ -17,69 +17,7 @@ class SettingParser;
 class SendBufferImpl;
 
 
-class threadMonitor
-{
-public:
-    threadMonitor(const HANDLE hThread) : _hThread(hThread)
-    {
-    }
 
-    void Update()
-    {
-        FILETIME ftCreation, ftExit, ftKernel, ftUser;
-        GetThreadTimes(_hThread, &ftCreation, &ftExit, &ftKernel, &ftUser);
-
-        const ULARGE_INTEGER ulKernel = FileTimeToLargeInteger(ftKernel);
-        const ULARGE_INTEGER ulUser = FileTimeToLargeInteger(ftUser);
-
-        const ULONGLONG kernelTime = ulKernel.QuadPart / 10000;
-        const ULONGLONG userTime = ulUser.QuadPart / 10000;
-
-        if (_lastKernelTime > 0)
-        {
-            _kernelTime = kernelTime - _lastKernelTime;
-            _lastKernelTime = kernelTime;
-        }
-
-        if (_lastUserTime > 0)
-        {
-            _userTime = userTime - _lastUserTime;
-            _lastUserTime = userTime;
-        }
-    }
-
-    ULONGLONG KernelTime() const
-    {
-        return _kernelTime;
-    }
-
-    ULONGLONG UserTime() const
-    {
-        return _userTime;
-    }
-
-    ULONGLONG TotTime() const
-    {
-        return KernelTime() + UserTime();
-    }
-
-private:
-    ULARGE_INTEGER FileTimeToLargeInteger(const FILETIME& ft)
-    {
-        ULARGE_INTEGER ul{};
-        ul.HighPart = ft.dwHighDateTime;
-        ul.LowPart = ft.dwLowDateTime;
-        return ul;
-    }
-
-private:
-    HANDLE _hThread;
-    ULONGLONG _lastKernelTime = 0;
-    ULONGLONG _lastUserTime = 0;
-
-    ULONGLONG _kernelTime = 0;
-    ULONGLONG _userTime = 0;
-};
 
 class NormalIOCP
 {

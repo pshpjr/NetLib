@@ -11,7 +11,9 @@ file(GLOB_RECURSE NETLIB_FILES CONFIGURE_DEPENDS
     include/*.h
     include/*.hpp
 )
-add_library(NetLib STATIC ${NETLIB_FILES})
+add_library(NetLib STATIC ${NETLIB_FILES}
+        src/ThreadMonitor.cpp
+        include/ThreadMonitor.h)
 
 # 컴파일 설정
 target_compile_features(NetLib PUBLIC cxx_std_20)
