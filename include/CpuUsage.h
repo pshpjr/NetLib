@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 #include "MyWindows.h"
 
 /////////////////////////////////////////////////////////////////////////////
-// CCpuUsage CPUTime(); // CPUTime(hProcess)
+// CpuUsage CPUTime(); // CPUTime(hProcess)
 //
 // while ( 1 )
 // {
@@ -13,13 +13,13 @@
 // Sleep(1000);
 // }
 /////////////////////////////////////////////////////////////////////////////
-class CCpuUsage
+class CpuUsage
 {
 public:
     //----------------------------------------------------------------------
     // 생성자, 확인대상 프로세스 핸들. 미입력시 자기 자신.
     //----------------------------------------------------------------------
-    CCpuUsage(HANDLE hProcess = INVALID_HANDLE_VALUE);
+    CpuUsage(HANDLE hProcess = INVALID_HANDLE_VALUE);
     void UpdateCpuTime(void);
 
     float ProcessorTotal(void) const

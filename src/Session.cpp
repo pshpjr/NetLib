@@ -1,15 +1,15 @@
-﻿#include "Session.h"
+#include "Session.h"
 
 #include <iostream>
 #include <optick.h>
 #include <optional>
 
-#include "CSendBuffer.h"
+#include "SendBufferImpl.h"
 #include "IOCP.h"
 
-#include "CLogger.h"
+#include "Logger.h"
 #include "CoreGlobal.h"
-#include "CRecvBuffer.h"
+#include "RecvBuffer.h"
 #include "Executables.h"
 
 Session::Session()
@@ -73,7 +73,7 @@ bool Session::CanSend()
 	return true;
 }
 
-bool Session::EnqueueSendData(CSendBuffer* buffer)
+bool Session::EnqueueSendData(SendBufferImpl* buffer)
 {
 	return _sendQ.Enqueue(buffer);
 }
@@ -400,13 +400,13 @@ void Session::Reset()
 	_timeout = _defaultTimeout;
 	_errCode = -1;
 
-	//CRecvBuffer* recvBuffer;
+	//RecvBuffer* recvBuffer;
 	//while ( _groupRecvQ.Dequeue(recvBuffer) )
 	//{
 	//	recvBuffer->Release(L"ResetRecvRelease");
 	//}
 
-	CSendBuffer* sendBuffer;
+	SendBufferImpl* sendBuffer;
 	while (_sendQ.Dequeue(sendBuffer))
 	{
 		sendBuffer->Release(L"ResetSendRelease");
@@ -459,7 +459,7 @@ void Session::RealSend()
 	{
 		for (int i = 0; i < MAX_SEND_COUNT; i++)
 		{
-			CSendBuffer* buffer;
+			SendBufferImpl* buffer;
 			volatile auto result = _sendQ.Dequeue(buffer);
 			if (result == false)
 			{
@@ -516,7 +516,7 @@ void Session::RealSend()
 			__fallthrough;
 			break;
 		default:
-			gLogger->Write(L"Disconnect", CLogger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error
+			gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error
 			               , GetSessionId());
 			__debugbreak();
 		}

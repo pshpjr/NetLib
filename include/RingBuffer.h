@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 #include "Types.h"
 #include "Container.h"
 
-class CRingBuffer
+class RingBuffer
 {
     //버퍼 사이즈는 2의 N승꼴
     static constexpr auto BUFFER_SIZE = 8192;

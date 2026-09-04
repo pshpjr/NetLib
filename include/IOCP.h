@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "BuildOption.h"
 #include "GroupManager.h"
@@ -7,7 +7,7 @@
 #include IOCP_HEADER
 
 class SendBuffer;
-class CRecvBuffer;
+class RecvBuffer;
 class Executable;
 class Client;
 
@@ -62,7 +62,7 @@ public:
     bool GetFreeIndex(unsigned short& index);
 
     void ReleaseFreeIndex(unsigned short index);
-    void ProcessBuffer(Session& session, CSendBuffer& buffer);
+    void ProcessBuffer(Session& session, SendBufferImpl& buffer);
     //connect
     WSAResult<SessionID> GetClientSession(const String& ip, Port port);
     bool IsValidSession(SessionID id);
@@ -95,7 +95,7 @@ public:
         UNREFERENCED_PARAMETER(sessionId);
     }
 
-    virtual void OnRecvPacket(SessionID sessionId, CRecvBuffer& buffer)
+    virtual void OnRecvPacket(SessionID sessionId, RecvBuffer& buffer)
     {
         UNREFERENCED_PARAMETER(sessionId);
         UNREFERENCED_PARAMETER(buffer);
@@ -169,7 +169,7 @@ private:
     void increaseSendCount(int value);
 
     void _onDisconnect(SessionID sessionId, int wsaErrCode);
-    void onRecvPacket(const Session& session, CRecvBuffer& buffer);
+    void onRecvPacket(const Session& session, RecvBuffer& buffer);
 
     //WorkerThreadFunc
     void GroupThread(LPVOID arg);

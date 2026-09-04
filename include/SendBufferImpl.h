@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <stdexcept>
 #include "TLSPool.h"
 #include "Protocol.h"
@@ -7,9 +7,9 @@
 
 struct NetHeader;
 
-class CSendBuffer final
+class SendBufferImpl final
 {
-    USE_TLS_POOL(CSendBuffer)
+    USE_TLS_POOL(SendBufferImpl)
 
     friend class IOCP;
     friend class NormalIOCP;
@@ -26,7 +26,7 @@ public:
     /// </summary>
     /// <returns></returns>
 
-    static CSendBuffer* Alloc()
+    static SendBufferImpl* Alloc()
     {
         const auto ret = _pool.Alloc();
         ret->Clear();
@@ -71,10 +71,10 @@ public:
     }
 
     template <typename T>
-    CSendBuffer& operator <<(const T& value);
-    CSendBuffer& operator <<(LPWSTR value);
-    CSendBuffer& operator <<(psh::LPCWSTR value);
-    CSendBuffer& operator <<(const String& value);
+    SendBufferImpl& operator <<(const T& value);
+    SendBufferImpl& operator <<(LPWSTR value);
+    SendBufferImpl& operator <<(psh::LPCWSTR value);
+    SendBufferImpl& operator <<(const String& value);
 
     void SetWstr(psh::LPCWSTR arr, int size);
     void SetCstr(LPCSTR arr, int size);
@@ -86,22 +86,22 @@ public:
 
 
 
-    CSendBuffer(const CSendBuffer& other) = delete;
+    SendBufferImpl(const SendBufferImpl& other) = delete;
 
-    CSendBuffer(CSendBuffer&& other) noexcept = delete;
+    SendBufferImpl(SendBufferImpl&& other) noexcept = delete;
 
-    CSendBuffer& operator=(const CSendBuffer& other) = delete;
+    SendBufferImpl& operator=(const SendBufferImpl& other) = delete;
 
-    CSendBuffer& operator=(CSendBuffer&& other) noexcept = delete;
+    SendBufferImpl& operator=(SendBufferImpl&& other) noexcept = delete;
 private:
 
-    CSendBuffer();
-    ~CSendBuffer() = default;
+    SendBufferImpl();
+    ~SendBufferImpl() = default;
 
 
 
 private:
-    bool CopyData(CSendBuffer& dst) const;
+    bool CopyData(SendBufferImpl& dst) const;
 
     void Clear()
     {
@@ -174,7 +174,7 @@ private:
     int _bufferSize = BUFFER_SIZE;
     char isEncrypt = false;
 
-    static TlsPool<CSendBuffer, 0, false> _pool;
+    static TlsPool<SendBufferImpl, 0, false> _pool;
 
 
     SRWLOCK _encodeLock;
@@ -210,7 +210,7 @@ private:
 };
 
 template <typename T>
-CSendBuffer& CSendBuffer::operator<<(const T& value)
+SendBufferImpl& SendBufferImpl::operator<<(const T& value)
 {
     static_assert(std::is_scalar_v<T>);
     CanPush(sizeof(T));

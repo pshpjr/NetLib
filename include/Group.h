@@ -1,8 +1,8 @@
-﻿#pragma once
+#pragma once
 
 #include <chrono>
 
-#include "CLogger.h"
+#include "Logger.h"
 #include "GroupTypes.h"
 
 #include "LockFreeFixedQueue.h"
@@ -12,7 +12,7 @@ class Session;
 class SendBuffer;
 class GroupManager;
 class GroupExecutable;
-class CRecvBuffer;
+class RecvBuffer;
 class IOCP;
 
 /// <summary>
@@ -50,7 +50,7 @@ public:
     virtual void OnUpdate(int milli);
     virtual void OnEnter(SessionID id);
     virtual void OnLeave(SessionID id, int wsaErrCode);
-    virtual void OnRecv(SessionID id, CRecvBuffer& recvBuffer);
+    virtual void OnRecv(SessionID id, RecvBuffer& recvBuffer);
 
     [[nodiscard]] GroupID GetGroupID() const;
     [[nodiscard]] int GetQueued() const;
@@ -131,10 +131,10 @@ private:
     template <typename Header>
     void RecvHandler(Session& session, void* iocp, DWORD transferred);
 
-    void onRecvPacket(const Session& session, CRecvBuffer& buffer);
+    void onRecvPacket(const Session& session, RecvBuffer& buffer);
 
 private:
-    std::unique_ptr<CLogger> _groupLogger;
+    std::unique_ptr<Logger> _groupLogger;
     GroupID _groupId = GroupID::InvalidGroupID();
     std::unique_ptr<GroupExecutable> _executable;
     std::chrono::steady_clock::time_point _prevUpdate;

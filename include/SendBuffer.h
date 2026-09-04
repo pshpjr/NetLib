@@ -1,11 +1,11 @@
-﻿#pragma once
+#pragma once
 #include "Types.h"
-#include "CSendBuffer.h"
+#include "SendBufferImpl.h"
 
 class SendBuffer
 {
 public:
-	SendBuffer(CSendBuffer& other);
+	SendBuffer(SendBufferImpl& other);
 
 	~SendBuffer();
 
@@ -23,7 +23,7 @@ public:
 
 	int Size() const;
 
-	CSendBuffer* getBuffer() const;
+	SendBufferImpl* getBuffer() const;
 
 	template <typename T>
 	SendBuffer& operator<<(const T& value)
@@ -39,5 +39,5 @@ public:
 	int CanPushSize();
 
 private:
-	CSendBuffer* buffer;
+	SendBufferImpl* buffer;
 };

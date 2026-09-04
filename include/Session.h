@@ -1,9 +1,9 @@
-﻿#pragma once
+#pragma once
 #include <chrono>
 #include <LockFreeFixedQueue.h>
 #include <optional>
 
-#include "CRingBuffer.h"
+#include "RingBuffer.h"
 #include "GroupTypes.h"
 #include "LockQueue.h"
 #include "Macro.h"
@@ -11,8 +11,8 @@
 #include "Socket.h"
 #include "Types.h"
 
-class CSendBuffer;
-class CRecvBuffer;
+class SendBufferImpl;
+class RecvBuffer;
 class IOCP;
 
 class RecvExecutable;
@@ -51,7 +51,7 @@ public:
 	bool Release(psh::LPCWSTR content = L"", int type = 0);
 
 
-	bool EnqueueSendData(CSendBuffer* buffer);
+	bool EnqueueSendData(SendBufferImpl* buffer);
 	void RegisterRecv();
 	void RecvNotIncrease();
 	void TrySend();
@@ -126,9 +126,9 @@ private:
 #endif
 	char _connect = false;
 
-	LockFreeFixedQueue<CSendBuffer*, MAX_SEND_COUNT> _sendQ{};
-	//TlsLockFreeQueue<CSendBuffer*> _sendQ;
-	CSendBuffer* _sendingQ[MAX_SEND_COUNT];
+	LockFreeFixedQueue<SendBufferImpl*, MAX_SEND_COUNT> _sendQ{};
+	//TlsLockFreeQueue<SendBufferImpl*> _sendQ;
+	SendBufferImpl* _sendingQ[MAX_SEND_COUNT];
 
 	IOCP* _owner;
 
@@ -149,7 +149,7 @@ private:
 
 	int _defaultTimeout = 5000;
 	int _timeout = 5000;
-	CRingBuffer _recvQ;
+	RingBuffer _recvQ;
 	std::chrono::steady_clock::time_point lastRecv;
 
 	//Encrypt

@@ -1,7 +1,7 @@
-﻿#include "RedisConnection.h"
+#include "RedisConnection.h"
 #include <optional>
 
-#include "CLogger.h"
+#include "Logger.h"
 #include "CoreGlobal.h"
 #include <cpp_redis/cpp_redis.h>
 
@@ -66,7 +66,7 @@ std::optional<String> RedisConnection::Get(const std::string& key)
     {
         String wKey(key.length(), L'\n');
         wKey.assign(key.begin(), key.end());
-        gLogger->Write(L"Redis", CLogger::LogLevel::Debug, L"invalid key %s", wKey.c_str());
+        gLogger->Write(L"Redis", Logger::LogLevel::Debug, L"invalid key %s", wKey.c_str());
 
         return {};
     }
