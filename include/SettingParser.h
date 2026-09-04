@@ -7,26 +7,17 @@
 #include "Macro.h"
 
 /*
-	파일 형식은
+	파일 형식은 TOML이다.
 
-	그룹 :
-	{
-	키 : 값
-	키 : 값
-	}
-	값은 띄어쓰기 단위로 구별한다. 
-	값은 {}로 감싸면 안 된다
-	 
+	[그룹]
+	키 = 값
  */
 
 
 class SettingParser
 {
 public:
-    SettingParser() : _groupsName(MAXGROUPSIZE)
-                    , _settingsContainer(MAXGROUPSIZE)
-    {
-    }
+    SettingParser() = default;
 
     enum class ErrType
     {
@@ -94,24 +85,10 @@ public:
     ~SettingParser() = default;
 
 private:
-    
     std::optional<String> GetValueImpl(const String& name) const;
     void LoadSetting(psh::LPCWSTR location);
-    void Parse();
-    bool GetTok(OUT psh::LPWSTR word);
 
 private:
     static constexpr int MAX_WORD_SIZE = 100;
-    static constexpr int MAXERRLEN = 100;
-    static constexpr int MAXGROUPSIZE = 10;
-
-    psh::LPWSTR _buffer = nullptr;
-
-    size_t _bufferIndex = 0;
-    size_t bufferSize = 0;
-
-    psh::int32 _groupIndex = -1;
-    Vector<String> _groupsName;
-    
-    Vector<HashMap<String, String>> _settingsContainer;
+    HashMap<String, String> _settings;
 };
