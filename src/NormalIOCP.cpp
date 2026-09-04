@@ -12,6 +12,7 @@
 #include "GroupManager.h"
 #include "IOCP.h"
 #include "LockFreeStack.h"
+#include "Profiler.h"
 #include "SendBuffer.h"
 #include "Session.h"
 #include "SettingParser.h"
@@ -663,6 +664,7 @@ void IOCP::WorkerThread()
 {
     using namespace std::chrono;
 
+    PRO_THREAD("IOCP Worker");
     srand(GetCurrentThreadId());
     while (true)
     {

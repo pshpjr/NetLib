@@ -7,7 +7,6 @@
 #include "GroupExecutable.h"
 #include "GroupManager.h"
 #include "IOCP.h"
-#include "Profiler.h"
 #include "Protocol.h"
 #include "stdafx.h"
 

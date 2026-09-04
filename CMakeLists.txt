@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.28)
 
 project(NetLib LANGUAGES CXX)
 
+option(NETLIB_ENABLE_TRACY "Enable Tracy profiler integration" OFF)
+
 # C++ 표준 설정
 set(CMAKE_CXX_STANDARD 20)
 
@@ -67,6 +69,12 @@ find_package(Iconv REQUIRED)
 find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
+
+if(NETLIB_ENABLE_TRACY)
+    find_package(Tracy CONFIG REQUIRED)
+    target_compile_definitions(NetLib PUBLIC NETLIB_ENABLE_TRACY)
+    target_link_libraries(NetLib PUBLIC Tracy::TracyClient)
+endif()
 
 target_link_libraries(NetLib PRIVATE
     CURL::libcurl

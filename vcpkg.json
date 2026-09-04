@@ -1,7 +1,7 @@
 {
   "name" : "net-lib",
   "version-string" : "0.1",
-  "dependencies" : [ "curl", "libiconv", "libmysql", "tracy", {
+  "dependencies" : [ "curl", "libiconv", "libmysql", {
     "name" : "range-v3",
     "version>=" : "0.12.0#2"
   }, {
@@ -10,5 +10,15 @@
   }, {
     "name" : "redis-plus-plus",
     "features" : [ "cxx17" ]
-  } ]
+  } ],
+  "features": {
+    "tracy": {
+      "description": "Enable Tracy profiler integration",
+      "dependencies": [ {
+        "name": "tracy",
+        "default-features": false,
+        "features": [ "on-demand" ]
+      } ]
+    }
+  }
 }

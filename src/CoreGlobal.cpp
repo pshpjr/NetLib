@@ -4,7 +4,6 @@
 #include "Logger.h"
 #include "CrashDump.h"
 #include "SettingParser.h"
-//#include "Profiler.h"
 
 CrashDump* gCrashDump = nullptr;
 Logger* gLogger = nullptr;
