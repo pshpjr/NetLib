@@ -459,43 +459,6 @@ bool IOCP::IsValidSession(const SessionID id)
 }
 
 
-void IOCP::SetDisableClickAndClose()
-{
-    DWORD consoleModePrev;
-    const HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
-    GetConsoleMode(handle, &consoleModePrev);
-    SetConsoleMode(handle, consoleModePrev & ~ENABLE_QUICK_EDIT_MODE);
-
-    // get the handle to the console
-    const HWND consoleWindow = GetConsoleWindow();
-
-    // get handle to the System Menu
-    const HMENU systemMenu = GetSystemMenu(consoleWindow, 0);
-
-    // how many items are there?
-    const int itemCount = GetMenuItemCount(systemMenu);
-    int j = -1;
-    const auto buf = static_cast<WCHAR*>(malloc(256 * sizeof(WCHAR)));
-
-    for (int i = 0; i < itemCount; i++)
-    {
-        // find the one we want
-        GetMenuStringW(systemMenu, i, buf, 255, MF_BYPOSITION);
-        if (!wcscmp(buf, L"닫기(&C)"))
-        {
-            j = i;
-            break;
-        }
-    }
-
-    // if found, remove that menu item
-    if (j >= 0)
-    {
-        RemoveMenu(systemMenu, j, MF_BYPOSITION);
-    }
-    free(buf);
-}
-
 bool IOCP::DisconnectSession(const SessionID sessionId)
 {
     const auto result = FindSession(sessionId, L"DisconnectInc");

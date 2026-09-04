@@ -44,7 +44,6 @@ public:
     //deprecate
     bool SendPackets(SessionID sessionId, Vector<SendBuffer>& bufArr);
 
-    static void SetDisableClickAndClose();
     bool DisconnectSession(SessionID sessionId);
     bool isEnd() const;
     void SetMaxPacketSize(int size);
