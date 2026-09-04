@@ -14,18 +14,18 @@ public:
 
     RecvBuffer& operator >>(String& value);
 
-    void GetWstr(const psh::LPWSTR arr, int size);
-    void GetCstr(psh::LPSTR arr, int size);
+    void GetWstr(wchar_t *buffer, int size);
+    void GetCstr(char *buffer, int size);
 
 
     //private:
     RecvBuffer() = default;
 
-    RecvBuffer(RingBuffer* buffer, const psh::int32 size);
+    RecvBuffer(RingBuffer* buffer, psh::int32 size);
 
     ~RecvBuffer() = default;
 
-    void CanPop(const psh::uint64 popByte) const;
+    void CanPop(psh::uint64 popByte) const;
 
     //	static RecvBuffer* Alloc(CRingBuffer* buffer, psh::int32 size)
     //	{

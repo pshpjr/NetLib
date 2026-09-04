@@ -33,25 +33,25 @@ void RecvBuffer::Clear()
 }
 
 
-int RecvBuffer::CanPopSize(void) const
+int RecvBuffer::CanPopSize() const
 {
     return _size;
 }
 
 
-void RecvBuffer::GetWstr(const psh::LPWSTR arr, const int strLen)
+void RecvBuffer::GetWstr(wchar_t *buffer, int strLen)
 {
     CanPop(strLen);
-    _buffer->Peek(reinterpret_cast<char*>(arr), strLen * sizeof(psh::WCHAR));
+    _buffer->Peek(reinterpret_cast<char*>(buffer), strLen * sizeof(psh::WCHAR));
     _buffer->Dequeue(strLen * sizeof(psh::WCHAR));
 
     _size -= strLen * sizeof(psh::WCHAR);
 }
 
-void RecvBuffer::GetCstr(const psh::LPSTR arr, const int size)
+void RecvBuffer::GetCstr(char *buffer, int size)
 {
     CanPop(size);
-    _buffer->Peek(arr, size);
+    _buffer->Peek(buffer, size);
     _buffer->Dequeue(size);
     _size -= size;
 }

@@ -92,7 +92,7 @@ void SendBufferImpl::Encode(const char staticKey)
 SendBufferImpl& SendBufferImpl::operator<<(const LPWSTR value)
 {
     //insert null terminated string to buffer
-    const size_t strlen = wcslen(value) + 1;
+    const size_t strlen = std::wcslen(value) + 1;
     CanPush(strlen);
     wcscpy_s(reinterpret_cast<wchar_t*>(_rear), strlen, value);
     _rear += strlen * sizeof(WCHAR);
@@ -102,7 +102,7 @@ SendBufferImpl& SendBufferImpl::operator<<(const LPWSTR value)
 SendBufferImpl& SendBufferImpl::operator<<(const psh::LPCWSTR value)
 {
     //insert null terminated string to buffer
-    const size_t strlen = wcslen(value) + 1;
+    const size_t strlen = std::wcslen(value.data()) + 1;
     SetWstr(value, strlen);
     return *this;
 }
@@ -117,14 +117,14 @@ SendBufferImpl& SendBufferImpl::operator<<(const String& value)
 
 void SendBufferImpl::SetWstr(const psh::LPCWSTR arr, const int size)
 {
-    CanPush(size);
-    wmemcpy_s((LPWSTR)_rear, size, arr, size);
+    CanPush(size * sizeof(wchar_t));
+    std::memcpy(_rear, arr.data(), size);
     _rear += size * sizeof(WCHAR);
 }
 
 void SendBufferImpl::SetCstr(const psh::LPCSTR arr, const int size)
 {
     CanPush(size);
-    memcpy_s(_rear, size, arr, size);
+    std::memcpy(_rear, arr.data(), size);
     _rear += size;
 }

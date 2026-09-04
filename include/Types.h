@@ -8,11 +8,11 @@ namespace psh
 {
 
     // Windows API types
-    using LPWSTR = wchar_t*;
-    using LPCWSTR = const wchar_t*;
+    using LPWSTR = std::wstring_view;
+    using LPCWSTR = const std::wstring_view;
     using LPWCH = wchar_t*;
-    using LPSTR = char*;
-    using LPCSTR = const char*;
+    using LPSTR = std::string_view;
+    using LPCSTR = const std::string_view;
     using WCHAR = wchar_t;
 
 

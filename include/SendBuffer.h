@@ -32,7 +32,7 @@ public:
     }
     void SetWstr(psh::LPCWSTR arr, int size);
 
-    void SetCstr(LPCSTR arr, int size);
+    void SetCstr(std::string_view arr, int size);
 
     int CanPushSize();
 
