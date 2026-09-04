@@ -5,7 +5,6 @@
 #include <thread>
 
 #include "LockFreeData.h"
-#include "LockGuard.h"
 #include "Macro.h"
 #include "Types.h"
 #include "Utility.h"

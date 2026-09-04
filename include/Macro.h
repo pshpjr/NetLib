@@ -1,4 +1,7 @@
 ﻿#pragma once
+#include <mutex>
+#include <shared_mutex>
+
 #ifdef _WIN32
 #include <intrin.h> // For __debugbreak()
 #else
@@ -61,9 +64,9 @@ inline void trigger_debug_break() {
 
 #define USE_MANY_LOCKS(count)	std::shared_mutex _locks[count];
 #define USE_LOCK				USE_MANY_LOCKS(1)
-#define	READ_LOCK_IDX(idx)		ReadLockGuard readLockGuard_##idx{_locks[idx]}
+#define	READ_LOCK_IDX(idx)		std::shared_lock readLockGuard_##idx{_locks[idx]}
 #define READ_LOCK				READ_LOCK_IDX(0)
-#define	WRITE_LOCK_IDX(idx)		WriteLockGuard writeLockGuard_##idx{_locks[idx]}
+#define	WRITE_LOCK_IDX(idx)		std::unique_lock writeLockGuard_##idx{_locks[idx]}
 #define WRITE_LOCK				WRITE_LOCK_IDX(0)
 
 /*-----------------
