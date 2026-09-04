@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <atomic>
 #include <chrono>
 #include <optional>
 
@@ -113,14 +114,14 @@ private:
     //Network	
     alignas(64) SessionID _sessionId = {{0}};
     Socket _socket;
-    GroupID _groupId = GroupID(0);
-    long _refCount = RELEASE_FLAG;
+    std::atomic<GroupID> _groupId = GroupID(0);
+    std::atomic<long> _refCount = RELEASE_FLAG;
     volatile int _errCode = -1;
     
 #ifdef SESSION_DEBUG
 	long DebugRef = 0;
 #endif
-    char _connect = false;
+    std::atomic_bool _connect = false;
 
     LockFreeFixedQueue<SendBufferImpl*, MAX_SEND_COUNT> _sendQ;
     //TlsLockFreeQueue<CSendBuffer*> _sendQ;
@@ -140,7 +141,7 @@ private:
 
 
     //Reference
-    char _isSending = false;
+    std::atomic_bool _isSending = false;
 
     //Timeout
     bool _needCheckSendTimeout = false;
@@ -168,7 +169,7 @@ private:
 	};
 	static const int debugSize = 2000;
 
-	long debugIndex = 0;
+	std::atomic<long> debugIndex = 0;
 	RelastinReleaseEncrypt_D release_D[debugSize];
 
 	//세션 id, 종류
@@ -176,7 +177,7 @@ private:
 	public:
 	void Write(long refCount, GroupID dst, psh::LPCWSTR cause)
 	{
-		auto index = InterlockedIncrement(&debugIndex);
+		auto index = ++debugIndex;
 		release_D[index % debugSize] = { GetSessionId(),dst,refCount, cause,GetGroupID()};
 	}
 
@@ -189,10 +190,10 @@ private:
 
 long Session::IncreaseRef(psh::LPCWSTR content)
 {
-    auto result = InterlockedIncrement(&_refCount);
+    auto result = ++_refCount;
 
 #ifdef SESSION_DEBUG
-	Write(_refCount, GroupID::InvalidGroupID(), content);
+	Write(_refCount.load(), GroupID::InvalidGroupID(), content);
 #else
     UNREFERENCED_PARAMETER(content);
 #endif

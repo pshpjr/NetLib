@@ -138,16 +138,16 @@ protected:
     */
     psh::uint64 _acceptCount = 0;
     psh::uint64 _oldAccepCount = 0;
-    psh::int64 _recvCount = 0;
-    psh::int64 _sendCount = 0;
+    std::atomic<psh::int64> _recvCount = 0;
+    std::atomic<psh::int64> _sendCount = 0;
     psh::uint64 _oldDisconnect = 0;
-    psh::int64 _disconnectCount = 0;
-    psh::uint32 _tcpSemaphoreTimeout = 0;
+    std::atomic<psh::int64> _disconnectCount = 0;
+    std::atomic<psh::uint32> _tcpSemaphoreTimeout = 0;
     psh::uint64 _acceptTps = 0;
     psh::uint64 _recvTps = 0;
     psh::uint64 _sendTps = 0;
     psh::uint64 _disconnectps = 0;
-    short _sessionCount = 0;
+    std::atomic<short> _sessionCount = 0;
     psh::uint64 _packetPoolSize = 0;
     psh::uint32 _packetPoolEmpty = 0;
     psh::uint64 _timeoutSessions = 0;

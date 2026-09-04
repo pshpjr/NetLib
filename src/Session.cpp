@@ -51,14 +51,14 @@ bool Session::CanSend()
         {
             return false;
         }
-        if (InterlockedExchange8(&_isSending, true) == 1)
+        if (_isSending.exchange(true))
         {
             return false;
         }
 
         if (_sendQ.Size() == 0)
         {
-            InterlockedExchange8(&_isSending, false);
+            _isSending = false;
 
             continue;
         }
@@ -74,10 +74,10 @@ void Session::EnqueueSendData(SendBufferImpl* buffer)
 
 bool Session::Release(psh::LPCWSTR content, int type)
 {
-    int refDecResult = InterlockedDecrement(&_refCount);
+    const long refDecResult = --_refCount;
 
 #ifdef SESSION_DEBUG
-	Write(_refCount, GroupID::InvalidGroupID(), content);
+	Write(_refCount.load(), GroupID::InvalidGroupID(), content);
 #else
     UNREFERENCED_PARAMETER(content);
     UNREFERENCED_PARAMETER(type);
@@ -85,23 +85,22 @@ bool Session::Release(psh::LPCWSTR content, int type)
 
     if (refDecResult == 0)
     {
-        if (InterlockedCompareExchange(&_refCount, RELEASE_FLAG, 0) == 0)
+        long expected = 0;
+        if (_refCount.compare_exchange_strong(expected, RELEASE_FLAG))
         {
-            //InterlockedIncrement(&_owner->_iocpCompBufferSize);
-
-            //InterlockedOr((long*)&(_groupId), 0) == 0
+            //++_owner->_iocpCompBufferSize;
 
             if (GetGroupID() == GroupManager::BaseGroupID())
             {
 #ifdef SESSION_DEBUG
-				Write(_refCount, GroupID::InvalidGroupID(), L"SessionGroup 0 PostRelease");
+				Write(_refCount.load(), GroupID::InvalidGroupID(), L"SessionGroup 0 PostRelease");
 #endif
                 PostRelease();
             }
             else
             {
 #ifdef SESSION_DEBUG
-				Write(_refCount, GroupID::InvalidGroupID(), L"SessionGroup other");
+				Write(_refCount.load(), GroupID::InvalidGroupID(), L"SessionGroup other");
 #endif
                 _owner->_groupManager->SessionDisconnected(this);
             }
@@ -113,7 +112,7 @@ bool Session::Release(psh::LPCWSTR content, int type)
 
 void Session::Close()
 {
-    InterlockedExchange8(&_connect, 0);
+    _connect = false;
     _socket.CancelIO();
 }
 
@@ -130,7 +129,7 @@ void Session::TrySend()
 
 void Session::RegisterRecv()
 {
-    InterlockedIncrement(&_refCount);
+    ++_refCount;
 
     RecvNotIncrease();
 }
@@ -285,23 +284,22 @@ void Session::SetConnect()
 
 void Session::OffReleaseFlag()
 {
-    InterlockedBitTestAndReset(&_refCount, 20);
+    _refCount.fetch_and(~RELEASE_FLAG);
 }
 
 GroupID Session::GetGroupID() const
 {
-    return _groupId;
+    return _groupId.load();
 }
 
 void Session::SetGroupID(const GroupID id)
 {
-    InterlockedExchange((long*)&_groupId, long(id));
+    _groupId = id;
 }
 
 long Session::GetRefCount(SessionID id)
 {
-    //auto value = _refCount;
-    auto value = InterlockedOr(&_refCount, 0);
+    const auto value = _refCount.load();
     ASSERT_CRASH(_sessionId == id, L"Session ID Wrong");
     return value;
 }
@@ -309,7 +307,7 @@ long Session::GetRefCount(SessionID id)
 void Session::WriteContentLog(unsigned int type)
 {
 #ifdef SESSION_DEBUG
-		Write(_refCount, GroupID::InvalidGroupID(), L"SendContent");
+		Write(_refCount.load(), GroupID::InvalidGroupID(), L"SendContent");
 #else
     UNREFERENCED_PARAMETER(type);
 #endif
@@ -397,7 +395,7 @@ void Session::Reset()
     SetGroupID(GroupID(0));
     _recvQ.Clear();
 
-    const int notSend = InterlockedExchange(&_postSendExecute.dataNotSend, 0);
+    const int notSend = _postSendExecute.dataNotSend.exchange(0);
 
     for (int i = 0; i < notSend; i++)
     {

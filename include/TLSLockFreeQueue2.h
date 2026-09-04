@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include <mutex>
+#include <shared_mutex>
 #include "Container.h"
 #include "Utility.h"
 #include <TLSLockFreeQueue.h>
@@ -10,7 +12,6 @@ public:
 	TLSLockFreeQueue2()
 	{
 		psh::util::TlsAlloc(_tlsIndex);
-		InitializeSRWLock(&_queueListLock);
 	}
 
 	~TLSLockFreeQueue2() { psh::util::TlsFree(_tlsIndex); }
@@ -28,13 +29,11 @@ public:
 			queue = new TLSLockFreeQueue<T>();
 			psh::util::TlsSet(_tlsIndex,queue);
 
-			AcquireSRWLockExclusive(&_queueListLock);
-
-			queues.push_back(queue);
-
-			ReleaseSRWLockExclusive(&_queueListLock);
-
-			InterlockedIncrement(&_queueCount);
+			{
+				std::unique_lock lock(_queueListLock);
+				queues.push_back(queue);
+				++_queueCount;
+			}
 		}
 
 
@@ -48,11 +47,14 @@ public:
 
 	bool dequeue(T& data)
 	{
-		int queueCount = _queueCount;
-
-		auto i = queues.begin() + lastQueueIndex;
 		bool find = false;
-		AcquireSRWLockShared(&_queueListLock);
+		std::shared_lock lock(_queueListLock);
+		const int queueCount = _queueCount;
+		if (queueCount == 0)
+		{
+			return false;
+		}
+		auto i = queues.begin() + lastQueueIndex;
 		for ( int n = 0; n < queueCount; ++n, i = nextQueue(i) )
 		{
 			if ( (*i)->Dequeue(data) )
@@ -62,7 +64,6 @@ public:
 				break;
 			}
 		}
-		ReleaseSRWLockShared(&_queueListLock);
 		return find;
 	}
 
@@ -73,6 +74,6 @@ private:
 	long _queueCount = 0;
 
 	std::vector<TLSLockFreeQueue<T>*> queues;
-	SRWLOCK _queueListLock;
+	std::shared_mutex _queueListLock;
 };
 

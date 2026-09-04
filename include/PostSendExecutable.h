@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <atomic>
 #include <chrono>
 #include "Executable.h"
 
@@ -12,5 +13,5 @@ public:
 
     std::chrono::steady_clock::time_point lastSend{};
 
-    long dataNotSend = 0;
+    std::atomic<long> dataNotSend = 0;
 };

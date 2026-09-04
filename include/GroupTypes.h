@@ -4,8 +4,8 @@
 
 #ifndef GROUPTYPES_H
 #define GROUPTYPES_H
+#include <atomic>
 #include "Types.h"
-#include "MyWindows.h"
 
 class GroupID
 {
@@ -15,7 +15,7 @@ public:
     }
     static GroupID NextID()
     {
-        return GroupID(InterlockedIncrement(&g_GroupID));
+        return GroupID(++g_GroupID);
     }
 
     static consteval GroupID InvalidGroupID()
@@ -43,7 +43,7 @@ public:
 
 private:
     long _id;
-    inline static long g_GroupID = 0;
+    inline static std::atomic<long> g_GroupID = 0;
 };
 
 

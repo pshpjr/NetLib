@@ -35,12 +35,15 @@ void SendBufferImpl::WriteNetHeader(const psh::uint8 code) const
 
 void SendBufferImpl::TryEncode(const char staticKey)
 {
-    std::lock_guard lock(_encodeLock);
     if (!isEncrypt)
     {
-        WriteNetHeader(dfPACKET_CODE);
+        std::lock_guard lock(_encodeLock);
+        if (!isEncrypt)
+        {
+            WriteNetHeader(dfPACKET_CODE);
 
-        Encode(staticKey);
+            Encode(staticKey);
+        }
     }
 }
 

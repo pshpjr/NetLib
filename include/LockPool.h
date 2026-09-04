@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <memory>
-#include "MyWindows.h"
+#include <mutex>
 template <typename T, bool usePlacement = false>
 class LockPool
 {
@@ -15,8 +15,6 @@ public:
 
 	LockPool(int iBlockNum)
 	{
-		InitializeCriticalSection(&_lock);
-
 		for (int i = 0; i < iBlockNum; ++i)
 		{
 			Node* newNode = createNode();
@@ -31,7 +29,7 @@ public:
 
 	T* Alloc()
 	{
-		EnterCriticalSection(&_lock);
+		std::unique_lock lock(_lock);
 		Node* retNode = _pFreeNode;
 		if (retNode != nullptr)
 		{
@@ -46,7 +44,7 @@ public:
 		else
 		{
 			_allocCount++;
-			LeaveCriticalSection(&_lock);
+			lock.unlock();
 
 			retNode = createNode();
 			return (T*)(&(retNode->_data));
@@ -55,7 +53,6 @@ public:
 		retNode->next = (Node*)0x3412;
 		retNode->_head = (Node*)0x3412;
 #endif
-		LeaveCriticalSection(&_lock);
 		return (T*)(&(retNode->_data));
 	}
 
@@ -79,12 +76,11 @@ public:
 		{
 			pdata->~_data();
 		}
-		EnterCriticalSection(&_lock);
+		std::lock_guard lock(_lock);
 		dataNode->next = _pFreeNode;
 		_pFreeNode = dataNode;
 
 		_objectCount++;
-		LeaveCriticalSection(&_lock);
 		return true;
 	}
 
@@ -104,5 +100,5 @@ private:
 	int _objectCount = 0;
 	int _allocCount = 0;
 
-	CRITICAL_SECTION _lock;
+	std::mutex _lock;
 };

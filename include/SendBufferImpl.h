@@ -176,7 +176,7 @@ private:
 
     static TlsPool<SendBufferImpl, 0, false> _pool;
 
-    std::shared_mutex _encodeLock;
+    std::mutex _encodeLock;
 
     static constexpr int SERIAL_INIT_SIZE = 500;
     static constexpr int SERIAL_INIT_MULTIPLIER = 20;

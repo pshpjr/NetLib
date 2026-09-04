@@ -83,7 +83,6 @@ class ProfileManager
 {
     ProfileManager()
     {
-        //InitializeSRWLock(&_profileListLock);
         setTLSNum();
         //_onexit(call_profile_manager_destructor); 
     }
@@ -166,7 +165,6 @@ private:
 
     std::list<Profiler*> _profilerList;
 
-    //SRWLOCK _profileListLock;
     std::wstring optionalText;
     psh::util::TlsKey TLSNum;
 };

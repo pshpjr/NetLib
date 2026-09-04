@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <type_traits>
 #include "Group.h"
 
@@ -24,7 +26,7 @@ public:
 
     static consteval GroupID BaseGroupID() {return GroupID(0);} 
 private:
-    SRWLOCK _groupLock;
+    std::shared_mutex _groupLock;
     HashMap<GroupID, std::unique_ptr<Group>> _groups;
 
     IOCP* _owner;
@@ -46,10 +48,10 @@ GroupID GroupManager::CreateGroup(Args&&... args)
     newGroup->_owner = this;
 
     newGroup->OnCreate();
-    AcquireSRWLockExclusive(&_groupLock);
-    auto ret = _groups.emplace(newGroup->_groupId, std::unique_ptr<Group>(newGroup));
-    ReleaseSRWLockExclusive(&_groupLock);
-
+    {
+        std::unique_lock lock(_groupLock);
+        _groups.emplace(newGroup->_groupId, std::unique_ptr<Group>(newGroup));
+    }
 
     return newGroup->_groupId;
 }

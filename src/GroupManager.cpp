@@ -14,35 +14,34 @@ void GroupManager::MoveSession(const SessionID target, const GroupID dst, bool u
     GroupID src = session->GetGroupID();
 
 
-    AcquireSRWLockShared(&_groupLock);
-
-    if (src != BaseGroupID())
     {
-        const auto& srcGroup = _groups.find(src)->second;
-#ifdef SESSION_DEBUG
-		session->Write(-1, src, L"MoveLeave");
-#endif
-        srcGroup->LeaveSession(session->GetSessionId(), update, session->GetErr());
-    }
-    session->SetGroupID(dst);
-    if (dst != BaseGroupID())
-    {
-        const auto& dstGroup = _groups.find(dst)->second;
-#ifdef SESSION_DEBUG
-		session->Write(-1, dst, L"MoveEnter");
-#endif
-        dstGroup->EnterSession(session->GetSessionId(), update);
-    }
-    ReleaseSRWLockShared(&_groupLock);
+        std::shared_lock lock(_groupLock);
 
-
+        if (src != BaseGroupID())
+        {
+            const auto& srcGroup = _groups.find(src)->second;
+#ifdef SESSION_DEBUG
+		    session->Write(-1, src, L"MoveLeave");
+#endif
+            srcGroup->LeaveSession(session->GetSessionId(), update, session->GetErr());
+        }
+        session->SetGroupID(dst);
+        if (dst != BaseGroupID())
+        {
+            const auto& dstGroup = _groups.find(dst)->second;
+#ifdef SESSION_DEBUG
+		    session->Write(-1, dst, L"MoveEnter");
+#endif
+            dstGroup->EnterSession(session->GetSessionId(), update);
+        }
+    }
     session->Release(L"MoveSessionRel");
 }
 
 
 void GroupManager::Update()
 {
-    AcquireSRWLockShared(&_groupLock);
+    std::shared_lock lock(_groupLock);
     for (auto& [groupId, groupPtr] : _groups)
     {
         if (groupPtr->NeedUpdate())
@@ -51,16 +50,17 @@ void GroupManager::Update()
             _owner->PostExecutable(groupPtr->_executable.get(), 0);
         }
     }
-    ReleaseSRWLockShared(&_groupLock);
 }
 
 bool GroupManager::OnRecv(SessionID sessionId, GroupID groupId)
 {
     //객체의 주소를 받아오고 나서 락을 해제해도 문제 x
     //해쉬맵에 데이터가 추가되면서 객체가 이동할 수 있으나 uniqueptr이 가리키는 원본 포인터는 변하지 않을 것.
-    AcquireSRWLockShared(&_groupLock);
-    auto ptr = _groups[groupId].get();
-    ReleaseSRWLockShared(&_groupLock);
+    Group* ptr;
+    {
+        std::shared_lock lock(_groupLock);
+        ptr = _groups[groupId].get();
+    }
     return ptr->Enqueue({Group::GroupJob::Recv, sessionId});
 }
 
@@ -68,7 +68,7 @@ void GroupManager::SessionDisconnected(Session* target)
 {
     GroupID src = target->GetGroupID();
 
-    AcquireSRWLockShared(&_groupLock);
+    std::shared_lock lock(_groupLock);
 
     if (src != BaseGroupID())
     {
@@ -79,12 +79,10 @@ void GroupManager::SessionDisconnected(Session* target)
         srcGroup->LeaveSession(target->GetSessionId(), true, target->GetErr());
     }
 
-    ReleaseSRWLockShared(&_groupLock);
 }
 
 
 GroupManager::GroupManager(IOCP* owner)
     : _owner(owner)
 {
-    InitializeSRWLock(&_groupLock);
 }

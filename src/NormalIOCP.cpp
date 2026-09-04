@@ -307,7 +307,7 @@ bool IOCP::SendPacket(const SessionID sessionId, SendBuffer& sendBuffer, int typ
     // if (session.CanSend())
     // {
     //     session._sendExecute.Clear();
-    //     //InterlockedIncrement(&_iocpCompBufferSize);
+    //     //++_iocpCompBufferSize;
     //     PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
     //         , &session._sendExecute._overlapped);
     // }
@@ -443,7 +443,7 @@ WSAResult<SessionID> IOCP::GetClientSession(const String& ip, const Port port)
     _sessions[index].SetNetSession(_staticKey);
     _sessions[index].RecvNotIncrease();
 
-    InterlockedIncrement16(&_sessionCount);
+    ++_sessionCount;
     return sessionId;
 }
 
@@ -515,8 +515,8 @@ bool IOCP::DisconnectSession(const SessionID sessionId)
 
 void IOCP::_onDisconnect(const SessionID sessionId, int wsaErrCode)
 {
-    InterlockedDecrement16(&_sessionCount);
-    InterlockedIncrement64(&_disconnectCount);
+    --_sessionCount;
+    ++_disconnectCount;
 
     OnDisconnect(sessionId, wsaErrCode);
 }
@@ -855,7 +855,7 @@ void IOCP::WorkerThread(LPVOID arg)
                     , L"SemaphoreTimeout  sessionID : %d, executableType : %s, sendWait : %d recvWait : %d"
                     , session->GetSessionId(), Executable::GetIoType(*overlapped).c_str(), sendWait, recvWait);
                 session->SetErr(errNo);
-                InterlockedIncrement(&_tcpSemaphoreTimeout);
+                ++_tcpSemaphoreTimeout;
                 break;
                 }
 
@@ -962,11 +962,11 @@ void IOCP::AcceptThread(LPVOID arg)
         session.SetNetSession(_staticKey);
         session.OffReleaseFlag();
 
-        InterlockedExchange8(&session._connect, true);
+        session._connect = true;
         OnConnect(session.GetSessionId(), clientSocket.GetSockAddress());
         session.RecvNotIncrease();
 
-        InterlockedIncrement16(&_sessionCount);
+        ++_sessionCount;
     }
     printf("AcceptThreadEnd\n");
 }
@@ -986,8 +986,8 @@ void IOCP::MonitorThread(LPVOID arg)
             _oldAccepCount = _acceptCount;
             _disconnectps = _disconnectCount - _oldDisconnect;
             _oldDisconnect = _disconnectCount;
-            _recvTps = InterlockedExchange64(&_recvCount, 0);
-            _sendTps = InterlockedExchange64(&_sendCount, 0);
+            _recvTps = _recvCount.exchange(0);
+            _sendTps = _sendCount.exchange(0);
             _packetPoolSize = SendBufferImpl::_pool.GetGPoolSize();
             _packetPoolEmpty = SendBufferImpl::_pool.GetGPoolEmptyCount();
 
@@ -1051,7 +1051,7 @@ void IOCP::IncreaseRecvCount(const int value)
         ++localRecvCount;
         if (localRecvCount == 100)
         {
-            InterlockedAdd64(&_recvCount, 100);
+            _recvCount.fetch_add(100);
             localRecvCount = 0;
         }
     }
@@ -1065,7 +1065,7 @@ void IOCP::increaseSendCount(const int value)
         ++localSendCount;
         if (localSendCount == 100)
         {
-            InterlockedAdd64(&_sendCount, 100);
+            _sendCount.fetch_add(100);
             localSendCount = 0;
         }
     }
