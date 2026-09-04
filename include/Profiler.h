@@ -1,11 +1,12 @@
-﻿#pragma once
+#pragma once
 #include <chrono>
 #include <list>
 #include <shared_mutex>
 #include <thread>
 
 #include "LockFreeData.h"
-#include "LockGuard.h"
+#include <mutex>
+#include <shared_mutex>
 #include "Macro.h"
 #include "Types.h"
 #include "Utility.h"

@@ -33,7 +33,6 @@ add_library(NetLib STATIC
         src/GroupManager.cpp
         src/HardwareMonitor.cpp
         src/LockFreeStack.cpp
-        src/LockGuard.cpp
         src/LockPool.cpp
         src/LockStack.cpp
         src/MemoryPool.cpp
