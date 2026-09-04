@@ -77,7 +77,7 @@ void Group::Update()
 {
 	using namespace std::chrono;
 	using namespace std::literals::chrono_literals;
-	if (InterlockedExchange8(&_isRun, 1) == 1)
+	if (_isRun.exchange(true))
 	{
 		return;
 	}
@@ -108,14 +108,14 @@ void Group::Update()
 		oldWorkTime = std::chrono::duration_cast<milliseconds>(workTime).count();
 		workTime = workTime.zero();
 
-		oldHandledJob = std::exchange(_handledJob, 0);
+		oldHandledJob = _handledJob.exchange(0);
 		_enterTps = std::exchange(_handledEnter, 0);
 		_leaveTps = std::exchange(_handledLeave, 0);
 		jobQSize = _jobs->Size();
 
 		_nextMonitor += 1s;
 	}
-	InterlockedExchange8(&_isRun, 0);
+	_isRun.store(false);
 }
 
 bool Group::HandleJob()
@@ -208,7 +208,7 @@ bool Group::HandleJob()
 			break;
 		}
 	}
-	InterlockedAdd64(&_handledJob, jobs);
+	_handledJob.fetch_add(jobs);
 	return true;
 }
 

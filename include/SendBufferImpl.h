@@ -1,4 +1,5 @@
 #pragma once
+#include <mutex>
 #include <stdexcept>
 #include "TLSPool.h"
 #include "Protocol.h"
@@ -36,7 +37,7 @@ public:
 
     long IncreaseRef(LPCWCH content = L"")
     {
-        auto refIncResult = InterlockedIncrement(&_refCount);
+        auto refIncResult = ++_refCount;
 
 #ifdef SEND_DEBUG
 		auto index = InterlockedIncrement(&debugIndex);
@@ -50,7 +51,7 @@ public:
 
     void Release(LPCWCH content = L"")
     {
-        auto refResult = InterlockedDecrement(&_refCount);
+        auto refResult = --_refCount;
 
 #ifdef SEND_DEBUG
 		auto index = InterlockedIncrement(&debugIndex);
@@ -177,7 +178,7 @@ private:
     static TlsPool<SendBufferImpl, 0, false> _pool;
 
 
-    SRWLOCK _encodeLock;
+    std::mutex _encodeLock;
 
     static constexpr int SERIAL_INIT_SIZE = 500;
     static constexpr int SERIAL_INIT_MULTIPLIER = 20;

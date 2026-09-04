@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <atomic>
 #include <cstdlib>
 #include <concepts>
 #include <memory>
@@ -32,14 +33,14 @@ public:
         for (int i = 0; i < baseAllocSize; ++i)
         {
             auto newNode = createNode(std::forward<Args>(args)...);
-            newNode->next = _top;
+            newNode->next = _top.load();
             _top = newNode;
         }
     }
 
     ~MultiThreadObjectPool()
     {
-        Node* p = reinterpret_cast<Node*>((long long)_top & lock_free_data::pointerMask);
+        Node* p = reinterpret_cast<Node*>(reinterpret_cast<long long>(_top.load()) & lock_free_data::pointerMask);
         for (; p != nullptr;)
         {
             Node* next = p->next;
@@ -54,7 +55,7 @@ public:
 
     long Size() const
     {
-        return _count;
+        return _count.load();
     }
 
     template <typename ...Args>
@@ -65,7 +66,7 @@ public:
 
         for (;;)
         {
-            Node* top = _top;
+            Node* top = _top.load();
 
             Node* topNode = reinterpret_cast<Node*>((unsigned long long)top & lock_free_data::pointerMask);
             if (topNode == nullptr)
@@ -73,10 +74,9 @@ public:
                 break;
             }
 
-            if (InterlockedCompareExchange64(reinterpret_cast<__int64*>(&_top)
-                                             , reinterpret_cast<long long>(topNode->next) | reinterpret_cast<long long>(top) &
-                                               lock_free_data::indexMask
-                                             , reinterpret_cast<__int64>(top)) == reinterpret_cast<__int64>(top))
+            Node* newTop = reinterpret_cast<Node*>(reinterpret_cast<long long>(topNode->next) |
+                reinterpret_cast<long long>(top) & lock_free_data::indexMask);
+            if (_top.compare_exchange_strong(top, newTop))
             {
                 retNode = reinterpret_cast<Node*>((unsigned long long)top & lock_free_data::pointerMask);
 
@@ -84,7 +84,7 @@ public:
                 {
                     std::construct_at(reinterpret_cast<T*>(&retNode->data),std::forward<Args>(args)...);
                 }
-                InterlockedDecrement(&_count);
+                --_count;
                 return reinterpret_cast<T*>(&retNode->data);
             }
         }
@@ -100,21 +100,17 @@ public:
             std::destroy_at(data);
         }
         Node* node = reinterpret_cast<Node*>((unsigned long long)data - offsetof(Node, data));
-        //Node* newTop = ( Node* ) ( ( unsigned long long )( node ) | ( ( unsigned long long )( InterlockedIncrement16(&topCount) ) << 47 ) );
-
-
         for (;;)
         {
-            auto top = _top;
+            auto top = _top.load();
             node->next = reinterpret_cast<Node*>((long long)top & lock_free_data::pointerMask);
             Node* newTop = reinterpret_cast<Node*>((unsigned long long)(node) | (
                                                   ((long long)top + lock_free_data::indexInc) &
                                                   lock_free_data::indexMask));
 
-            if (InterlockedCompareExchange64(reinterpret_cast<__int64*>(&_top), reinterpret_cast<__int64>(newTop)
-                                             , reinterpret_cast<__int64>(top)) == reinterpret_cast<__int64>(top))
+            if (_top.compare_exchange_strong(top, newTop))
             {
-                InterlockedIncrement(&_count);
+                ++_count;
                 break;
             }
         }
@@ -135,8 +131,8 @@ private:
 
 
 private:
-    Node* _top{nullptr};
+    std::atomic<Node*> _top{nullptr};
 
     short topCount = 0;
-    long _count = 0;
+    std::atomic<long> _count = 0;
 };

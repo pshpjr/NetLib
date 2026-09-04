@@ -1,5 +1,5 @@
 #pragma once
-
+#include <atomic>
 #include <chrono>
 
 #include "Logger.h"
@@ -85,7 +85,7 @@ public:
     // void Write(SessionID id, jobType type,GroupID dst, String cause)
     //{
 
-    //	auto index = InterlockedIncrement(&debugArr[id.index].arrIndex);
+    //	auto index = ++debugArr[id.index].arrIndex;
 
     //	if (type == Leave && debugArr[id.index].arr[index - 1].id != id)
     //		__debugbreak();
@@ -145,7 +145,7 @@ private:
 
     // TlsLockFreeQueue<GroupJob> _jobs;
 
-    volatile char _isRun = 0;
+    std::atomic_bool _isRun = false;
 
     GroupManager* _owner;
 
@@ -155,7 +155,7 @@ private:
     std::chrono::steady_clock::time_point _nextMonitor;
     std::chrono::steady_clock::duration workTime{};
     std::chrono::steady_clock::duration maxWorkTime{};
-    psh::int64 _handledJob = 0;
+    std::atomic<psh::int64> _handledJob = 0;
     long jobQSize = 0;
 
     psh::int64 oldWorkTime = 0;

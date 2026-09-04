@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <atomic>
 #include "MyWindows.h"
 
 class CrashDump
@@ -24,5 +25,5 @@ public:
 
     static void PurecallHandler();
 
-    static long _dumpCount;
+    static std::atomic<long> _dumpCount;
 };

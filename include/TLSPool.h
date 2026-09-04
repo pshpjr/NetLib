@@ -1,5 +1,7 @@
 ﻿#pragma once
+#include <atomic>
 #include <list>
+#include <mutex>
 #include "SingleThreadObjectPool.h"
 #include "LockFreeStack.h"
 #include "Utility.h"
@@ -20,7 +22,7 @@ class TlsPool
 public:
     int AllocatedCount() const
     {
-        return (_acquireCount - _releaseCount) * _localPoolSize;
+        return (_acquireCount.load() - _releaseCount.load()) * _localPoolSize;
     }
 
     std::list<Node*> allocated;
@@ -33,15 +35,10 @@ public:
     };
 
     TlsPool(const int localPoolSize, const int globalPoolMultiplier):
-                                                                    _poolID(InterlockedIncrement(&gPoolID))
+                                                                    _poolID(++gPoolID)
                                                                     , _localPoolSize(localPoolSize)
                                                                     , _globalPoolMultiplier(globalPoolMultiplier)
     {
-#ifdef TLS_LEAK_DEBUG
-		InitializeCriticalSection(&_debugLock);
-#endif
-
-        InitializeCriticalSection(&_cs);
         psh::util::TlsAlloc(_localPoolTlsIndex);
 
         _pooledNodeSize = _globalPoolMultiplier;
@@ -54,22 +51,22 @@ public:
 
     int GetGPoolSize() const
     {
-        return _pooledNodeSize;
+        return _pooledNodeSize.load();
     }
 
     int GetGPoolEmptyCount() const
     {
-        return _poolEmptyCount;
+        return _poolEmptyCount.load();
     }
 
     int GetAcquireCount() const
     {
-        return _acquireCount;
+        return _acquireCount.load();
     }
 
     int GetReleaseCount() const
     {
-        return _releaseCount;
+        return _releaseCount.load();
     }
 
     Node* createNode()
@@ -79,9 +76,10 @@ public:
         newNode->tail = nullptr;
 
 #ifdef TLS_LEAK_DEBUG
-		EnterCriticalSection(&_debugLock);
-		allocated.push_back(newNode);
-		LeaveCriticalSection(&_debugLock);
+		{
+			std::lock_guard lock(_debugLock);
+			allocated.push_back(newNode);
+		}
 #endif
 
         if constexpr (!usePlacement)
@@ -97,7 +95,7 @@ public:
      */
     controlData AcquireNode(const int size)
     {
-        InterlockedIncrement(&_acquireCount);
+        ++_acquireCount;
 
 
         controlData data;
@@ -109,11 +107,11 @@ public:
 
             _nextBucket.Push(cb1);
 
-            InterlockedIncrement(&_poolEmptyCount);
-            InterlockedAdd(&_pooledNodeSize, size);
+            ++_poolEmptyCount;
+            _pooledNodeSize.fetch_add(size);
             return retCb;
         }
-        InterlockedAdd(&_pooledNodeSize, -size);
+        _pooledNodeSize.fetch_sub(size);
 
         return data;
     }
@@ -127,8 +125,8 @@ public:
 
         _nextBucket.Push(cb);
 
-        InterlockedIncrement(&_releaseCount);
-        InterlockedAdd(&_pooledNodeSize, size);
+        ++_releaseCount;
+        _pooledNodeSize.fetch_add(size);
     }
 
 
@@ -210,22 +208,20 @@ public:
     }
 
 private:
-    CRITICAL_SECTION _cs;
-
     LockFreeStack<controlData> _nextBucket;
 
     inline static psh::util::TlsKey _localPoolTlsIndex = 0;
     Node* _top = nullptr;
-    long _pooledNodeSize = 0;
-    inline static long gPoolID;
+    std::atomic<long> _pooledNodeSize = 0;
+    inline static std::atomic<long> gPoolID = 0;
     long _poolID = 0;
     int _localPoolSize;
     int _globalPoolMultiplier;
 
-    long _acquireCount = 0;
-    long _releaseCount = 0;
+    std::atomic<long> _acquireCount = 0;
+    std::atomic<long> _releaseCount = 0;
 
-    unsigned int _poolEmptyCount = 0;
+    std::atomic<unsigned int> _poolEmptyCount = 0;
 #ifdef TLS_DEBUG
 	struct Debug
 	{
@@ -243,7 +239,7 @@ private:
 
 #ifdef TLS_LEAK_DEBUG
 
-	CRITICAL_SECTION _debugLock;
+	std::mutex _debugLock;
 
 #endif
 };

@@ -39,10 +39,10 @@ public:
     //
     //	long IncreaseRef(LPCWCH cause = L"")
     //	{
-    //		auto refIncResult = InterlockedIncrement(&_refCount);
+    //		auto refIncResult = ++_refCount;
     //
     //#ifdef SERIAL_DEBUG
-    //		auto index = InterlockedIncrement(&debugIndex);
+    //		auto index = ++debugIndex;
     //		release_D[index % debugSize] = { refIncResult,content,0 };
     //#endif
     //
@@ -51,10 +51,10 @@ public:
     //
     //	void Release(LPCWCH cause = L"")
     //	{
-    //		auto refResult = InterlockedDecrement(&_refCount);
+    //		auto refResult = --_refCount;
     //
     //#ifdef SERIAL_DEBUG
-    //		auto index = InterlockedIncrement(&debugIndex);
+    //		auto index = ++debugIndex;
     //		release_D[index % debugSize] = { refResult,content,0 };
     //#endif
     //

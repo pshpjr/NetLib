@@ -36,7 +36,7 @@ void SendBufferImpl::TryEncode(const char staticKey)
 {
     if (!isEncrypt)
     {
-        AcquireSRWLockExclusive(&_encodeLock);
+        std::lock_guard lock(_encodeLock);
         if (!isEncrypt)
         {
             WriteNetHeader(dfPACKET_CODE);
@@ -44,7 +44,7 @@ void SendBufferImpl::TryEncode(const char staticKey)
             Encode(staticKey);
         }
 
-        ReleaseSRWLockExclusive(&_encodeLock);
+        
     }
 }
 
@@ -54,7 +54,7 @@ SendBufferImpl::SendBufferImpl()
     , _front(_data)
     , _rear(_data)
 {
-    InitializeSRWLock(&_encodeLock);
+    
 }
 
 bool SendBufferImpl::CopyData(SendBufferImpl& dst) const

@@ -37,7 +37,7 @@
 //
 //			Node* newTop = (Node*)((unsigned long long)(node) | ((unsigned long long)topCount << 47));
 //
-//			if (InterlockedCompareExchange64((__int64*)&top, (__int64)newTop, (__int64)t) == (__int64)t)
+//			if (top.compare_exchange_strong(t, newTop))
 //			{
 //
 //
@@ -57,7 +57,7 @@
 //			Node* node = topNode->next;
 //
 //
-//			if (InterlockedCompareExchange64((__int64*)&top, (__int64)node, (__int64)t) == (__int64)t)
+//			if (top.compare_exchange_strong(t, node))
 //			{
 //				data = topNode->data;
 //

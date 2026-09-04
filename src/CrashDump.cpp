@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-long CrashDump::_dumpCount = 0;
+std::atomic<long> CrashDump::_dumpCount = 0;
 
 CrashDump::CrashDump()
 {
@@ -38,7 +38,7 @@ LONG CrashDump::ExceptionFilter(const PEXCEPTION_POINTERS pExceptionPointer)
     size_t iWorkingMemory = 0;
     SYSTEMTIME st;
 
-    const long DumpCount = InterlockedIncrement(&_dumpCount);
+    const long DumpCount = ++_dumpCount;
 
     const HANDLE hProcess = GetCurrentProcess();
     if (hProcess == nullptr)

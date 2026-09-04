@@ -1,4 +1,4 @@
-﻿#include "GroupManager.h"
+#include "GroupManager.h"
 #include "GroupExecutable.h"
 #include "IOCP.h"
 
@@ -14,7 +14,7 @@ void GroupManager::MoveSession(const SessionID target, const GroupID dst, bool u
     GroupID src = session->GetGroupID();
 
 
-    AcquireSRWLockShared(&_groupLock);
+    std::shared_lock groupLock(_groupLock);
 
     if (src != BaseGroupID())
     {
@@ -33,7 +33,7 @@ void GroupManager::MoveSession(const SessionID target, const GroupID dst, bool u
 #endif
         dstGroup->EnterSession(session->GetSessionId(), update);
     }
-    ReleaseSRWLockShared(&_groupLock);
+    groupLock.unlock();
 
 
     session->Release(L"MoveSessionRel");
@@ -42,7 +42,7 @@ void GroupManager::MoveSession(const SessionID target, const GroupID dst, bool u
 
 void GroupManager::Update()
 {
-    AcquireSRWLockShared(&_groupLock);
+    std::shared_lock groupLock(_groupLock);
     for (auto& [groupId, groupPtr] : _groups)
     {
         if (groupPtr->NeedUpdate())
@@ -51,16 +51,16 @@ void GroupManager::Update()
             _owner->PostExecutable(groupPtr->_executable.get(), 0);
         }
     }
-    ReleaseSRWLockShared(&_groupLock);
+    groupLock.unlock();
 }
 
 bool GroupManager::OnRecv(SessionID sessionId, GroupID groupId, DWORD transferred)
 {
     //객체의 주소를 받아오고 나서 락을 해제해도 문제 x
     //해쉬맵에 데이터가 추가되면서 객체가 이동할 수 있으나 uniqueptr이 가리키는 원본 포인터는 변하지 않을 것.
-    AcquireSRWLockShared(&_groupLock);
+    std::shared_lock groupLock(_groupLock);
     auto ptr = _groups[groupId].get();
-    ReleaseSRWLockShared(&_groupLock);
+    groupLock.unlock();
     return ptr->Enqueue({Group::GroupJob::Recv, sessionId, 0, GroupID(0), transferred});
 }
 
@@ -68,7 +68,7 @@ void GroupManager::SessionDisconnected(Session* target)
 {
     GroupID src = target->GetGroupID();
 
-    AcquireSRWLockShared(&_groupLock);
+    std::shared_lock groupLock(_groupLock);
 
     if (src != BaseGroupID())
     {
@@ -79,12 +79,12 @@ void GroupManager::SessionDisconnected(Session* target)
         srcGroup->LeaveSession(target->GetSessionId(), true, target->GetErr());
     }
 
-    ReleaseSRWLockShared(&_groupLock);
+    groupLock.unlock();
 }
 
 
 GroupManager::GroupManager(IOCP* owner)
     : _owner(owner)
 {
-    InitializeSRWLock(&_groupLock);
+    
 }

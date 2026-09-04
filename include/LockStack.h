@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "MyWindows.h"
+#include <mutex>
 
 template <typename T>
 class LockStack
@@ -18,29 +18,25 @@ class LockStack
     };
 
 public:
-    LockStack()
-    {
-        InitializeCriticalSection(&_cs);
-    }
-
     void Push(const T& data)
     {
         Node* node = new Node();
 
         node->data = data;
 
-        EnterCriticalSection(&_cs);
+        std::lock_guard lock(_cs);
         node->next = _top;
         _top = node;
-        LeaveCriticalSection(&_cs);
     }
 
     T Pop()
     {
-        EnterCriticalSection(&_cs);
-        Node* t = _top;
-        _top = t->next;
-        LeaveCriticalSection(&_cs);
+        Node* t;
+        {
+            std::lock_guard lock(_cs);
+            t = _top;
+            _top = t->next;
+        }
 
         T ret = t->data;
         delete t;
@@ -50,5 +46,5 @@ public:
 private:
     Node* _top = nullptr;
     int _pooledNodeCount = 0;
-    CRITICAL_SECTION _cs;
+    std::mutex _cs;
 };

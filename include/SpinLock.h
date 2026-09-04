@@ -1,22 +1,21 @@
 ﻿#pragma once
-#include "MyWindows.h"
+#include <atomic>
 
 class SpinLock
 {
 public:
 	void Lock()
 	{
-		while (InterlockedExchange64(&flag,1) != 0)
+		while (flag.test_and_set())
 		{
 		}
 	}
 
 	void UnLock()
 	{
-		InterlockedExchange64(&flag, 0);
-		//flag = 0;
+		flag.clear();
 	}
 
 private:
-	long long flag = 0;
+	std::atomic_flag flag;
 };
