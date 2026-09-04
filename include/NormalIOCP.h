@@ -2,6 +2,7 @@
 #include <atomic>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <vector>
 
 #include "SessionTypes.h"
@@ -30,8 +31,6 @@ public:
 protected:
     NormalIOCP();
 
-    inline std::optional<Session*> findSession(SessionID id, psh::LPCWSTR content = L"");
-
     Session* FindSession(const SessionID id, const psh::LPCWSTR content = L"");
 
     static unsigned short GetSessionIndex(const SessionID sessionID);
@@ -55,7 +54,7 @@ protected:
     HANDLE _iocp = INVALID_HANDLE_VALUE;
     std::unique_ptr<Socket> _listenSocket;
 
-    std::vector<std::pair<HANDLE, DWORD>> _threadArray;
+    std::vector<std::thread> _threadArray;
 
     String _ip{};
     psh::uint16 _maxNetThread = 0;
@@ -64,7 +63,6 @@ protected:
     psh::uint16 _backlog = 0;
 
     bool _checkTiemout = true;
-    void* _this = nullptr;
     char _staticKey = 0;
     std::atomic_bool gracefulEnd = false;
     std::atomic_bool _isRunning = false;
