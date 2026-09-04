@@ -71,6 +71,7 @@ find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
 
+
 if(NETLIB_ENABLE_TRACY)
     find_package(Tracy CONFIG REQUIRED)
     target_compile_definitions(NetLib PUBLIC NETLIB_ENABLE_TRACY)
@@ -82,6 +83,7 @@ target_link_libraries(NetLib PRIVATE
     Iconv::Iconv
     unofficial::libmysql::libmysql
     redis++::redis++
+    tomlplusplus::tomlplusplus
 )
 
 target_link_libraries(NetLib PUBLIC fmt::fmt)
