@@ -1,16 +1,16 @@
-﻿#include "CRecvBuffer.h"
+﻿#include "RecvBuffer.h"
 #include <stdexcept>
 #include "Macro.h"
-#include "CRingBuffer.h"
+#include "RingBuffer.h"
 
 
 constexpr int RECV_INIT_SIZE = 2000;
 constexpr int RECV_INIT_MULTIPLIER = 3;
 
 
-//TlsPool<CRecvBuffer, 0> CRecvBuffer::_pool(RECV_INIT_SIZE, RECV_INIT_MULTIPLIER);
+//TlsPool<RecvBuffer, 0> RecvBuffer::_pool(RECV_INIT_SIZE, RECV_INIT_MULTIPLIER);
 
-CRecvBuffer& CRecvBuffer::operator>>(String& value)
+RecvBuffer& RecvBuffer::operator>>(String& value)
 {
     psh::uint16 len = 0;
     operator >>(len);
@@ -26,20 +26,20 @@ CRecvBuffer& CRecvBuffer::operator>>(String& value)
     return *this;
 }
 
-void CRecvBuffer::Clear()
+void RecvBuffer::Clear()
 {
     _buffer = nullptr;
     _size = 0;
 }
 
 
-int CRecvBuffer::CanPopSize(void) const
+int RecvBuffer::CanPopSize(void) const
 {
     return _size;
 }
 
 
-void CRecvBuffer::GetWstr(const psh::LPWSTR arr, const int strLen)
+void RecvBuffer::GetWstr(const psh::LPWSTR arr, const int strLen)
 {
     CanPop(strLen);
     _buffer->Peek(reinterpret_cast<char*>(arr), strLen * sizeof(psh::WCHAR));
@@ -48,7 +48,7 @@ void CRecvBuffer::GetWstr(const psh::LPWSTR arr, const int strLen)
     _size -= strLen * sizeof(psh::WCHAR);
 }
 
-void CRecvBuffer::GetCstr(const psh::LPSTR arr, const int size)
+void RecvBuffer::GetCstr(const psh::LPSTR arr, const int size)
 {
     CanPop(size);
     _buffer->Peek(arr, size);
@@ -56,12 +56,12 @@ void CRecvBuffer::GetCstr(const psh::LPSTR arr, const int size)
     _size -= size;
 }
 
-CRecvBuffer::CRecvBuffer(CRingBuffer *buffer, const psh::int32 size): _buffer(buffer)
+RecvBuffer::RecvBuffer(RingBuffer *buffer, const psh::int32 size): _buffer(buffer)
                                                              , _size(size)
 {
 }
 
-void CRecvBuffer::CanPop(const psh::uint64 popByte) const
+void RecvBuffer::CanPop(const psh::uint64 popByte) const
 {
     if (CanPopSize() < popByte)
     {

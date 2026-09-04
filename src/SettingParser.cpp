@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "Types.h"
-#include "CLogger.h"
+#include "Logger.h"
 #include "CoreGlobal.h"
 #include "Utility.h"
 
@@ -239,7 +239,7 @@ std::optional<String> SettingParser::GetValueImpl(const String& name) const
 
             if (result == _settingsContainer[i].end())
             {
-                gLogger->Write(L"SettingParser", CLogger::LogLevel::Debug, L"%s %s", group.c_str(), typeName.c_str());
+                gLogger->Write(L"SettingParser", Logger::LogLevel::Debug, L"%s %s", group.c_str(), typeName.c_str());
                 return {};
             }
             return result->second;

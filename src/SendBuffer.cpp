@@ -1,13 +1,13 @@
 ﻿#include "SendBuffer.h"
-#include "CSendBuffer.h"
+#include "SendBufferImpl.h"
 
 
 SendBuffer SendBuffer::Alloc()
 {
-    return SendBuffer(*CSendBuffer::Alloc());
+    return SendBuffer(*SendBufferImpl::Alloc());
 }
 
-SendBuffer::SendBuffer(CSendBuffer &other): buffer(&other)
+SendBuffer::SendBuffer(SendBufferImpl &other): buffer(&other)
 {
 
 }
@@ -40,7 +40,7 @@ int SendBuffer::Size() const
     return buffer->GetDataSize();
 }
 
-CSendBuffer * SendBuffer::getBuffer() const
+SendBufferImpl * SendBuffer::getBuffer() const
 {
     return buffer;
 }

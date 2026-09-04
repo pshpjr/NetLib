@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-class CSendBuffer;
+class SendBufferImpl;
 class CrashDump;
 extern CrashDump* gCrashDump;
-extern class CLogger* gLogger;
+extern class Logger* gLogger;
 extern class SettingParser* gSettingParser;

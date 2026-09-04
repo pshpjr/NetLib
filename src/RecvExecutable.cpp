@@ -1,7 +1,7 @@
 ﻿#include "RecvExecutable.h"
-#include "CLogger.h"
+#include "Logger.h"
 #include "CoreGlobal.h"
-#include "CRecvBuffer.h"
+#include "RecvBuffer.h"
 #include "IOCP.h"
 #include "Protocol.h"
 #include "Session.h"
@@ -37,7 +37,7 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
     IOCP& server = *static_cast<IOCP*>(iocp);
     int loopCount = 0;
 
-    CRingBuffer& recvQ = session._recvQ;
+    RingBuffer& recvQ = session._recvQ;
     while (true)
     {
         if (session.GetGroupID() != GroupManager::BaseGroupID())
@@ -59,7 +59,7 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
             if (header.code != dfPACKET_CODE)
             {
                 int frontIndex = recvQ.GetFrontIndex();
-                gLogger->Write(L"Disconnect", CLogger::LogLevel::Debug, L"WrongPacketCode id : %d\n index: %d \n"
+                gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketCode id : %d\n index: %d \n"
                     , session.GetSessionId(), frontIndex);
                 session.Close();
                 break;
@@ -68,7 +68,7 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
             if (header.len > session._maxPacketLen)
             {
                 int frontIndex = recvQ.GetFrontIndex();
-                gLogger->Write(L"Disconnect", CLogger::LogLevel::Debug, L"WrongPacketLen id : %d\n index: %d \n"
+                gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketLen id : %d\n index: %d \n"
                     , session.GetSessionId(), frontIndex);
                 session.Close();
                 break;
@@ -87,8 +87,8 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
             break;
         }
 
-        CRecvBuffer buffer(&recvQ, header.len);
-        //auto& buffer = *CRecvBuffer::Alloc(&recvQ,header.len);
+        RecvBuffer buffer(&recvQ, header.len);
+        //auto& buffer = *RecvBuffer::Alloc(&recvQ,header.len);
 
         if constexpr (std::is_same_v<Header, NetHeader>)
         {
@@ -96,7 +96,7 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
 
             if (!recvQ.ChecksumValid())
             {
-                gLogger->Write(L"Disconnect", CLogger::LogLevel::Debug, L"Recv Invalid Checksum id : %d"
+                gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"Recv Invalid Checksum id : %d"
                     , session.GetSessionId());
                 session.Close();
                 break;

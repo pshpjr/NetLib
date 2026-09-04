@@ -10,11 +10,11 @@
 
 class GroupManager;
 class MemoryUsage;
-class CCpuUsage;
+class CpuUsage;
 class Socket;
 class Session;
 class SettingParser;
-class CSendBuffer;
+class SendBufferImpl;
 
 
 class threadMonitor
@@ -98,7 +98,7 @@ protected:
 
     static unsigned short GetSessionIndex(const SessionID sessionID);
 
-    static inline void ProcessBuffer(Session& session, CSendBuffer& buffer);
+    static inline void ProcessBuffer(Session& session, SendBufferImpl& buffer);
     void WaitStart();
 
 protected:
@@ -156,7 +156,7 @@ protected:
 
     //std::vector<threadMonitor> _threadMonitors;
     std::unique_ptr<MemoryUsage> _memMonitor;
-    std::unique_ptr<CCpuUsage>  _cpuMonitor;
+    std::unique_ptr<CpuUsage>  _cpuMonitor;
 
     /*
     *

@@ -1,14 +1,14 @@
 #include "NormalIOCP.h"
 
-#include <CCpuUsage.h>
+#include <CpuUsage.h>
 #include <chrono>
 #include <format>
 #include <MemoryUsage.h>
 #include <process.h>
 
-#include "CLogger.h"
+#include "Logger.h"
 #include "CoreGlobal.h"
-#include "CSendBuffer.h"
+#include "SendBufferImpl.h"
 #include "Executables.h"
 #include "GroupManager.h"
 #include "IOCP.h"
@@ -379,7 +379,7 @@ bool IOCP::SendPackets(const SessionID sessionId, std::vector<SendBuffer>& bufAr
 }
 
 
-void NormalIOCP::ProcessBuffer(Session& session, CSendBuffer& buffer)
+void NormalIOCP::ProcessBuffer(Session& session, SendBufferImpl& buffer)
 {
     buffer.IncreaseRef(L"ProcessBuffInc");
     if (buffer.GetDataSize() == 0)
@@ -418,7 +418,7 @@ WSAResult<SessionID> IOCP::GetClientSession(const String& ip, const Port port)
     if (auto connectionResult = s.Connect(ip, port);
         !connectionResult.HasValue())
     {
-        gLogger->Write(L"ClientClose", CLogger::LogLevel::Debug, L"connect fail");
+        gLogger->Write(L"ClientClose", Logger::LogLevel::Debug, L"connect fail");
         s.Close();
         ReleaseFreeIndex(index);
 
@@ -521,7 +521,7 @@ void IOCP::_onDisconnect(const SessionID sessionId, int wsaErrCode)
     OnDisconnect(sessionId, wsaErrCode);
 }
 
-void IOCP::onRecvPacket(const Session& session, CRecvBuffer& buffer)
+void IOCP::onRecvPacket(const Session& session, RecvBuffer& buffer)
 {
     try
     {
@@ -530,7 +530,7 @@ void IOCP::onRecvPacket(const Session& session, CRecvBuffer& buffer)
     catch (const std::invalid_argument& err)
     {
         auto info = err.what();
-        gLogger->Write(L"RecvErr", CLogger::LogLevel::Debug, L"Can't pop : recv buffer is empty");
+        gLogger->Write(L"RecvErr", Logger::LogLevel::Debug, L"Can't pop : recv buffer is empty");
         DisconnectSession(session._sessionId);
     }
 }
@@ -631,12 +631,12 @@ psh::uint64 IOCP::GetTimeoutCount() const
 
 psh::uint32 IOCP::GetPacketPoolAcquireCount()
 {
-    return CSendBuffer::_pool.GetAcquireCount();
+    return SendBufferImpl::_pool.GetAcquireCount();
 }
 
 psh::uint32 IOCP::GetPacketPoolReleaseCount()
 {
-    return CSendBuffer::_pool.GetReleaseCount();
+    return SendBufferImpl::_pool.GetReleaseCount();
 }
 
 psh::uint64 IOCP::GetDisconnectCount() const
@@ -714,13 +714,13 @@ String IOCP::GetLibMonitorString() const
         , L"RecvTPS", GetRecvTps(), L"SendTPS", GetSendTps()
         , L"Disconnect", GetDisconnectCount(), L"DisconnectTPS", GetDisconnectPerSec()
         , L"SegmentTimeout", GetSegmentTimeout(), L"Timeout", GetTimeoutCount()
-        , L"GSendPool", CSendBuffer::_pool.GetGPoolSize(), L"GSendPoolEmpty"
-        , CSendBuffer::_pool.GetGPoolEmptyCount()
-        //, L"GRecvPool", CRecvBuffer::_pool.GetGPoolSize(), L"GRecvPoolEmpty", CRecvBuffer::_pool.GetGPoolEmptyCount()
-        , L"SendPoolAcq", CSendBuffer::_pool.GetAcquireCount(), L"SendPoolRel"
-        , CSendBuffer::_pool.GetReleaseCount()
-        //, L"RecvPoolAcq", CRecvBuffer::_pool.GetAcquireCount(), L"RecvPoolRel", CRecvBuffer::_pool.GetReleaseCount()
-        //,L"SendPoolGap", CSendBuffer::_pool.GetAcquireCount()- CSendBuffer::_pool.GetReleaseCount(),L"RecvPoolGap", CRecvBuffer::_pool.GetAcquireCount() - CRecvBuffer::_pool.GetReleaseCount()
+        , L"GSendPool", SendBufferImpl::_pool.GetGPoolSize(), L"GSendPoolEmpty"
+        , SendBufferImpl::_pool.GetGPoolEmptyCount()
+        //, L"GRecvPool", RecvBuffer::_pool.GetGPoolSize(), L"GRecvPoolEmpty", RecvBuffer::_pool.GetGPoolEmptyCount()
+        , L"SendPoolAcq", SendBufferImpl::_pool.GetAcquireCount(), L"SendPoolRel"
+        , SendBufferImpl::_pool.GetReleaseCount()
+        //, L"RecvPoolAcq", RecvBuffer::_pool.GetAcquireCount(), L"RecvPoolRel", RecvBuffer::_pool.GetReleaseCount()
+        //,L"SendPoolGap", CSendBuffer::_pool.GetAcquireCount()- CSendBuffer::_pool.GetReleaseCount(),L"RecvPoolGap", RecvBuffer::_pool.GetAcquireCount() - RecvBuffer::_pool.GetReleaseCount()
     );
 }
 
@@ -851,7 +851,7 @@ void IOCP::WorkerThread(LPVOID arg)
                                     ? duration_cast<milliseconds>(now - session->_postSendExecute.lastSend)
                                     : 0ms;
 
-                gLogger->Write(L"ConnectionError", CLogger::LogLevel::Error
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
                     , L"SemaphoreTimeout  sessionID : %d, executableType : %s, sendWait : %d recvWait : %d"
                     , session->GetSessionId(), Executable::GetIoType(*overlapped).c_str(), sendWait, recvWait);
                 session->SetErr(errNo);
@@ -862,7 +862,7 @@ void IOCP::WorkerThread(LPVOID arg)
             //WSA_OPERATION_ABORTED cancleIO로 인한 것.
             //서버가 먼저 끊는 상황에서 발생.
             case WSA_OPERATION_ABORTED:
-                gLogger->Write(L"ConnectionError", CLogger::LogLevel::Debug
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Debug
                     , L"Operation Aborted sessionID : %d, executableType : %s", session->GetSessionId()
                     , Executable::GetIoType(*overlapped).c_str());
                 session->SetErr(errNo);
@@ -870,13 +870,13 @@ void IOCP::WorkerThread(LPVOID arg)
             //io 도중에 closeSocket 호출
             //생기면 안 됨. 
             case ERROR_CONNECTION_ABORTED:
-                gLogger->Write(L"ConnectionError", CLogger::LogLevel::Error
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
                     , L"Connection Aborted sessionID : %d, executableType : %s", session->GetSessionId()
                     , Executable::GetIoType(*overlapped).c_str());
                 session->SetErr(errNo);
                 break;
             case ERROR_NOT_FOUND:
-                gLogger->Write(L"ConnectionError", CLogger::LogLevel::Error
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
                     , L"Error Not Found sessionID : %d, executableType : %s", session->GetSessionId()
                     , Executable::GetIoType(*overlapped).c_str());
                 session->SetErr(errNo);
@@ -988,8 +988,8 @@ void IOCP::MonitorThread(LPVOID arg)
             _oldDisconnect = _disconnectCount;
             _recvTps = InterlockedExchange64(&_recvCount, 0);
             _sendTps = InterlockedExchange64(&_sendCount, 0);
-            _packetPoolSize = CSendBuffer::_pool.GetGPoolSize();
-            _packetPoolEmpty = CSendBuffer::_pool.GetGPoolEmptyCount();
+            _packetPoolSize = SendBufferImpl::_pool.GetGPoolSize();
+            _packetPoolEmpty = SendBufferImpl::_pool.GetGPoolEmptyCount();
 
             _memMonitor->Update();
             _cpuMonitor->UpdateCpuTime();
@@ -1122,7 +1122,7 @@ _freeIndex(std::make_unique<LockFreeStack<unsigned short>>())
     , _groupManager(nullptr)
     , _settingParser(std::make_unique<SettingParser>())
 ,_memMonitor(std::make_unique<MemoryUsage>())
-,_cpuMonitor(std::make_unique<CCpuUsage>())
+,_cpuMonitor(std::make_unique<CpuUsage>())
 {
 }
 

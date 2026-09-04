@@ -1,16 +1,17 @@
-﻿#include "CSendBuffer.h"
+﻿#include "SendBufferImpl.h"
 #include "stdafx.h"
+#include <mutex>
 
 
-TlsPool<CSendBuffer, 0> CSendBuffer::_pool(SERIAL_INIT_SIZE, SERIAL_INIT_MULTIPLIER);
+TlsPool<SendBufferImpl, 0> SendBufferImpl::_pool(SERIAL_INIT_SIZE, SERIAL_INIT_MULTIPLIER);
 
-void CSendBuffer::WriteLanHeader()
+void SendBufferImpl::WriteLanHeader()
 {
     *(reinterpret_cast<psh::uint16*>(_front) - 1) = GetDataSize();
     _head = (char*)(reinterpret_cast<psh::uint16*>(_front) - 1);
 }
 
-void CSendBuffer::WriteNetHeader(const psh::uint8 code) const
+void SendBufferImpl::WriteNetHeader(const psh::uint8 code) const
 {
     const char* checksumIndex = GetDataPtr();
 
@@ -32,32 +33,26 @@ void CSendBuffer::WriteNetHeader(const psh::uint8 code) const
     *reinterpret_cast<NetHeader*>(GetHead()) = tmpHeader;
 }
 
-void CSendBuffer::TryEncode(const char staticKey)
+void SendBufferImpl::TryEncode(const char staticKey)
 {
+    std::lock_guard lock(_encodeLock);
     if (!isEncrypt)
     {
-        AcquireSRWLockExclusive(&_encodeLock);
-        if (!isEncrypt)
-        {
-            WriteNetHeader(dfPACKET_CODE);
+        WriteNetHeader(dfPACKET_CODE);
 
-            Encode(staticKey);
-        }
-
-        ReleaseSRWLockExclusive(&_encodeLock);
+        Encode(staticKey);
     }
 }
 
-CSendBuffer::CSendBuffer()
+SendBufferImpl::SendBufferImpl()
     : _data(_buffer + sizeof(NetHeader))
     , _head(_buffer)
     , _front(_data)
     , _rear(_data)
 {
-    InitializeSRWLock(&_encodeLock);
 }
 
-bool CSendBuffer::CopyData(CSendBuffer& dst) const
+bool SendBufferImpl::CopyData(SendBufferImpl& dst) const
 {
     memcpy_s(dst.GetDataPtr(), dst.CanPushSize(), GetFront(), CanPopSize());
 
@@ -66,7 +61,7 @@ bool CSendBuffer::CopyData(CSendBuffer& dst) const
     return true;
 }
 
-void CSendBuffer::Encode(const char staticKey)
+void SendBufferImpl::Encode(const char staticKey)
 {
     using Header = NetHeader;
 
@@ -91,7 +86,7 @@ void CSendBuffer::Encode(const char staticKey)
 }
 
 
-CSendBuffer& CSendBuffer::operator<<(const LPWSTR value)
+SendBufferImpl& SendBufferImpl::operator<<(const LPWSTR value)
 {
     //insert null terminated string to buffer
     const size_t strlen = wcslen(value) + 1;
@@ -101,7 +96,7 @@ CSendBuffer& CSendBuffer::operator<<(const LPWSTR value)
     return *this;
 }
 
-CSendBuffer& CSendBuffer::operator<<(const psh::LPCWSTR value)
+SendBufferImpl& SendBufferImpl::operator<<(const psh::LPCWSTR value)
 {
     //insert null terminated string to buffer
     const size_t strlen = wcslen(value) + 1;
@@ -109,7 +104,7 @@ CSendBuffer& CSendBuffer::operator<<(const psh::LPCWSTR value)
     return *this;
 }
 
-CSendBuffer& CSendBuffer::operator<<(const String& value)
+SendBufferImpl& SendBufferImpl::operator<<(const String& value)
 {
     operator<<(static_cast<psh::uint16>(value.length()));
     SetWstr(value.c_str(), value.length());
@@ -117,14 +112,14 @@ CSendBuffer& CSendBuffer::operator<<(const String& value)
     return *this;
 }
 
-void CSendBuffer::SetWstr(const psh::LPCWSTR arr, const int size)
+void SendBufferImpl::SetWstr(const psh::LPCWSTR arr, const int size)
 {
     CanPush(size);
     wmemcpy_s((LPWSTR)_rear, size, arr, size);
     _rear += size * sizeof(WCHAR);
 }
 
-void CSendBuffer::SetCstr(const psh::LPCSTR arr, const int size)
+void SendBufferImpl::SetCstr(const psh::LPCSTR arr, const int size)
 {
     CanPush(size);
     memcpy_s(_rear, size, arr, size);

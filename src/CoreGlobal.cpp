@@ -1,13 +1,13 @@
 ﻿#include "CoreGlobal.h"
 #include "stdafx.h"
 
-#include "CLogger.h"
+#include "Logger.h"
 #include "CrashDump.h"
 #include "SettingParser.h"
 //#include "Profiler.h"
 
 CrashDump* gCrashDump = nullptr;
-CLogger* gLogger = nullptr;
+Logger* gLogger = nullptr;
 SettingParser* gSettingParser = nullptr;
 
 class CoreGlobal
@@ -17,7 +17,7 @@ public:
     CoreGlobal()
     {
         gCrashDump = new CrashDump();
-        gLogger = new CLogger();
+        gLogger = new Logger();
         gSettingParser = new SettingParser();
     }
 

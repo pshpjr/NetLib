@@ -1,5 +1,5 @@
 ﻿#include "PostSendExecutable.h"
-#include "CSendBuffer.h"
+#include "SendBuffer.h"
 #include "IOCP.h"
 #include "Session.h"
 #include "stdafx.h"

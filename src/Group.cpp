@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include "CLogger.h"
-#include "CRecvBuffer.h"
+#include "Logger.h"
+#include "RecvBuffer.h"
 #include "GroupExecutable.h"
 #include "GroupManager.h"
 #include "IOCP.h"
@@ -19,7 +19,7 @@ Group::Group()
     , _nextUpdate(_prevUpdate + std::chrono::milliseconds(_loopMs))
     , _owner(nullptr)
     , _nextMonitor(_prevUpdate + std::chrono::seconds(1))
-    ,_groupLogger(std::make_unique<CLogger>(L"GroupLogger",CLogger::LogLevel::Debug))
+    ,_groupLogger(std::make_unique<Logger>(L"GroupLogger",Logger::LogLevel::Debug))
 ,_jobs(std::make_unique<LockFreeFixedQueue<GroupJob,8192>>())
 {
 }
@@ -190,7 +190,7 @@ bool Group::HandleJob()
     return true;
 }
 
-void Group::onRecvPacket(const Session& session, CRecvBuffer& buffer)
+void Group::onRecvPacket(const Session& session, RecvBuffer& buffer)
 {
     try
     {
@@ -200,7 +200,7 @@ void Group::onRecvPacket(const Session& session, CRecvBuffer& buffer)
     catch (const std::invalid_argument&)
     {
         _iocp->DisconnectSession(session.GetSessionId());
-        _groupLogger->Write(L"Recv Pop Err", CLogger::LogLevel::Debug, L"ERR");
+        _groupLogger->Write(L"Recv Pop Err", Logger::LogLevel::Debug, L"ERR");
     }
 }
 
@@ -246,7 +246,7 @@ void Group::OnLeave(SessionID id, int wsaErrCode)
     UNREFERENCED_PARAMETER(id);
 }
 
-void Group::OnRecv(SessionID id, CRecvBuffer &recvBuffer)
+void Group::OnRecv(SessionID id, RecvBuffer &recvBuffer)
 {
     UNREFERENCED_PARAMETER(id);
     UNREFERENCED_PARAMETER(recvBuffer);
@@ -298,7 +298,7 @@ void Group::RecvHandler(Session& session, void* iocp)
     IOCP& server = *static_cast<IOCP*>(iocp);
     int loopCount = 0;
 
-    CRingBuffer& recvQ = session._recvQ;
+    RingBuffer& recvQ = session._recvQ;
     while (true)
     {
         if (session.GetGroupID() != _groupId)
@@ -322,7 +322,7 @@ void Group::RecvHandler(Session& session, void* iocp)
             {
                 int frontIndex = recvQ.GetFrontIndex();
                 SessionID id = session.GetSessionId();
-                _groupLogger->Write(L"Disconnect", CLogger::LogLevel::Debug
+                _groupLogger->Write(L"Disconnect", Logger::LogLevel::Debug
                     , L"Group WrongPacketCode, SessionID : %d\n frontIndex: %d \n", id, frontIndex);
                 session.Close();
                 break;
@@ -332,7 +332,7 @@ void Group::RecvHandler(Session& session, void* iocp)
             {
                 int frontIndex = recvQ.GetFrontIndex();
                 SessionID id = session.GetSessionId();
-                _groupLogger->Write(L"Disconnect", CLogger::LogLevel::Debug
+                _groupLogger->Write(L"Disconnect", Logger::LogLevel::Debug
                     , L"Group WrongPacketLen, SessionID : %d\n index: %d \n", id, frontIndex);
                 session.Close();
                 break;
@@ -345,14 +345,14 @@ void Group::RecvHandler(Session& session, void* iocp)
             break;
         }
 
-        CRecvBuffer buffer(&recvQ, header.len);
+        RecvBuffer buffer(&recvQ, header.len);
         if constexpr (std::is_same_v<Header, NetHeader>)
         {
             recvQ.Decode(session._staticKey);
 
             if (!recvQ.ChecksumValid())
             {
-                _groupLogger->Write(L"Disconnect", CLogger::LogLevel::Debug, L"Group Invalid Checksum %d"
+                _groupLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"Group Invalid Checksum %d"
                     , session.GetSessionId());
                 session.Close();
                 break;

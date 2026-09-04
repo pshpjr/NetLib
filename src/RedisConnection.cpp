@@ -1,7 +1,7 @@
 ﻿#include "RedisConnection.h"
 #include <chrono>
 
-#include "CLogger.h"
+#include "Logger.h"
 #include "CoreGlobal.h"
 #include <sw/redis++/redis++.h>
 
@@ -82,7 +82,7 @@ std::optional<String> RedisConnection::Get(const std::string& key)
         if (!result)
         {
             const String wKey(key.begin(), key.end());
-            gLogger->Write(L"Redis", CLogger::LogLevel::Debug, L"invalid key %s", wKey.c_str());
+            gLogger->Write(L"Redis", Logger::LogLevel::Debug, L"invalid key %s", wKey.c_str());
 
             return std::nullopt;
         }

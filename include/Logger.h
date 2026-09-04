@@ -4,7 +4,7 @@
 //TODO: 멀티스레드에서 안전하게 동작하도록 수정.
 
 
-class CLogger
+class Logger
 {
 public:
     enum class LogLevel
@@ -15,7 +15,7 @@ public:
         , System
     };
 
-    CLogger(psh::LPCWSTR fileName = L"", LogLevel level = LogLevel::Invalid);
+    Logger(psh::LPCWSTR fileName = L"", LogLevel level = LogLevel::Invalid);
 
     void Write(psh::LPCWSTR type, LogLevel level, psh::LPCWSTR format, ...);
 

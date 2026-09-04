@@ -1,10 +1,10 @@
-﻿#include "CRingBuffer.h"
+﻿#include "RingBuffer.h"
 #include <Protocol.h>
 #include "stdafx.h"
 
 
 //front가 맨 앞이고 rear가 맨 끝인 상황 처리 해야 함. 
-int CRingBuffer::Size() const
+int RingBuffer::Size() const
 {
     const int rear = GetIndex(_rear);
     const int front = GetIndex(_front);
@@ -17,7 +17,7 @@ int CRingBuffer::Size() const
     return BUFFER_SIZE - (front - rear);
 }
 
-void CRingBuffer::Decode(const char staticKey)
+void RingBuffer::Decode(const char staticKey)
 {
     //맨 앞에 헤더가 있다는 가정. 
     NetHeader header;
@@ -58,7 +58,7 @@ void CRingBuffer::Decode(const char staticKey)
     //}
 }
 
-bool CRingBuffer::ChecksumValid() const
+bool RingBuffer::ChecksumValid() const
 {
     //맨 앞에 헤더가 있다는 가정. 
 
@@ -82,7 +82,7 @@ bool CRingBuffer::ChecksumValid() const
 }
 
 
-int CRingBuffer::DirectEnqueueSize() const
+int RingBuffer::DirectEnqueueSize() const
 {
     const int rear = GetIndex(_rear);
     const int front = GetIndex(_front);
@@ -163,7 +163,7 @@ int CRingBuffer::DirectEnqueueSize() const
 //	return 0;
 //}
 
-int CRingBuffer::DirectDequeueSize() const
+int RingBuffer::DirectDequeueSize() const
 {
     const int rear = GetIndex(_rear);
     const int front = GetIndex(_front);
@@ -175,7 +175,7 @@ int CRingBuffer::DirectDequeueSize() const
 }
 
 
-int CRingBuffer::Dequeue(const int deqSize)
+int RingBuffer::Dequeue(const int deqSize)
 {
     if (Size() == 0)
     {
@@ -199,7 +199,7 @@ int CRingBuffer::Dequeue(const int deqSize)
     return size;
 }
 
-unsigned int CRingBuffer::Peek(char *dst, const unsigned int size) const
+unsigned int RingBuffer::Peek(char *dst, const unsigned int size) const
 {
     const int front = GetIndex(_front);
     const unsigned int peekSize = size;

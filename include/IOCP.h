@@ -7,7 +7,7 @@
 #include IOCP_HEADER
 
 class SendBuffer;
-class CRecvBuffer;
+class RecvBuffer;
 class Executable;
 class Client;
 
@@ -91,7 +91,7 @@ public:
         UNREFERENCED_PARAMETER(sessionId);
     }
 
-    virtual void OnRecvPacket(SessionID sessionId, CRecvBuffer& buffer)
+    virtual void OnRecvPacket(SessionID sessionId, RecvBuffer& buffer)
     {
         UNREFERENCED_PARAMETER(sessionId);
         UNREFERENCED_PARAMETER(buffer);
@@ -158,7 +158,7 @@ private:
     void increaseSendCount(int value);
 
     void _onDisconnect(SessionID sessionId, int wsaErrCode);
-    void onRecvPacket(const Session& session, CRecvBuffer& buffer);
+    void onRecvPacket(const Session& session, RecvBuffer& buffer);
 
     //WorkerThreadFunc
     void GroupThread(LPVOID arg);

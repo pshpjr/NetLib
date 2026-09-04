@@ -2,7 +2,7 @@
 #include <chrono>
 #include <optional>
 
-#include "CRingBuffer.h"
+#include "RingBuffer.h"
 #include "GroupTypes.h"
 #include "LockFreeFixedQueue.h"
 #include "Macro.h"
@@ -10,8 +10,8 @@
 #include "Socket.h"
 #include "Types.h"
 
-class CSendBuffer;
-class CRecvBuffer;
+class SendBufferImpl;
+class RecvBuffer;
 class IOCP;
 
 class RecvExecutable;
@@ -50,7 +50,7 @@ public:
     bool Release(psh::LPCWSTR content = L"", int type = 0);
 
 
-    void EnqueueSendData(CSendBuffer* buffer);
+    void EnqueueSendData(SendBufferImpl* buffer);
     void RegisterRecv();
     void RecvNotIncrease();
     void TrySend();
@@ -122,12 +122,12 @@ private:
 #endif
     char _connect = false;
 
-    LockFreeFixedQueue<CSendBuffer*, MAX_SEND_COUNT> _sendQ;
+    LockFreeFixedQueue<SendBufferImpl*, MAX_SEND_COUNT> _sendQ;
     //TlsLockFreeQueue<CSendBuffer*> _sendQ;
-    CSendBuffer* _sendingQ[MAX_SEND_COUNT];
+    SendBufferImpl* _sendingQ[MAX_SEND_COUNT];
 
 
-    //TlsLockFreeQueue<CRecvBuffer*> _groupRecvQ;
+    //TlsLockFreeQueue<RecvBuffer*> _groupRecvQ;
 
     IOCP* _owner;
 
@@ -147,7 +147,7 @@ private:
 
     int _defaultTimeout = 5000;
     int _timeout = 5000;
-    CRingBuffer _recvQ;
+    RingBuffer _recvQ;
     std::chrono::steady_clock::time_point lastRecv;
     
     //Encrypt

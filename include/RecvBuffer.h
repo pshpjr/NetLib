@@ -1,33 +1,33 @@
 ﻿#pragma once
-#include "CRingBuffer.h"
+#include "RingBuffer.h"
 
-class CRecvBuffer
+class RecvBuffer
 {
-    //USE_TLS_POOL(CRecvBuffer);
+    //USE_TLS_POOL(RecvBuffer);
     friend class RecvExecutable;
     friend class IOCP;
     friend class Group;
 
 public:
     template <typename T>
-    CRecvBuffer& operator >>(T& value);
+    RecvBuffer& operator >>(T& value);
 
-    CRecvBuffer& operator >>(String& value);
+    RecvBuffer& operator >>(String& value);
 
     void GetWstr(const psh::LPWSTR arr, int size);
     void GetCstr(psh::LPSTR arr, int size);
 
 
     //private:
-    CRecvBuffer() = default;
+    RecvBuffer() = default;
 
-    CRecvBuffer(CRingBuffer* buffer, const psh::int32 size);
+    RecvBuffer(RingBuffer* buffer, const psh::int32 size);
 
-    ~CRecvBuffer() = default;
+    ~RecvBuffer() = default;
 
     void CanPop(const psh::uint64 popByte) const;
 
-    //	static CRecvBuffer* Alloc(CRingBuffer* buffer, psh::int32 size)
+    //	static RecvBuffer* Alloc(CRingBuffer* buffer, psh::int32 size)
     //	{
     //		const auto ret = _pool.Alloc();
     //		ret->Clear();
@@ -69,11 +69,11 @@ public:
 
 private:
     void Clear();
-    CRingBuffer* _buffer = nullptr;
+    RingBuffer* _buffer = nullptr;
     psh::int32 _size = 0;
     long _refCount = 0;
 
-    //static TlsPool<CRecvBuffer, 0, false> _pool;
+    //static TlsPool<RecvBuffer, 0, false> _pool;
 
 #ifdef SERIAL_DEBUG
 	//DEBUG
@@ -92,7 +92,7 @@ private:
 };
 
 template <typename T>
-CRecvBuffer& CRecvBuffer::operator>>(T& value)
+RecvBuffer& RecvBuffer::operator>>(T& value)
 {
     static_assert(std::is_scalar_v<T>);
     CanPop(sizeof(T));

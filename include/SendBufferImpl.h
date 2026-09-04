@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include <stdexcept>
+#include <atomic>
+#include <shared_mutex>
 #include "TLSPool.h"
 #include "Protocol.h"
 
@@ -7,9 +9,9 @@
 
 struct NetHeader;
 
-class CSendBuffer final
+class SendBufferImpl final
 {
-    USE_TLS_POOL(CSendBuffer)
+    USE_TLS_POOL(SendBufferImpl)
 
     friend class IOCP;
     friend class NormalIOCP;
@@ -22,11 +24,11 @@ public:
     }
 
     /// <summary>
-    /// Alloc을 받으면 레퍼런스가 1임. 
+    /// Alloc을 받으면 레퍼런스가 1임.
     /// </summary>
     /// <returns></returns>
 
-    static CSendBuffer* Alloc()
+    static SendBufferImpl* Alloc()
     {
         const auto ret = _pool.Alloc();
         ret->Clear();
@@ -36,10 +38,10 @@ public:
 
     long IncreaseRef(LPCWCH content = L"")
     {
-        auto refIncResult = InterlockedIncrement(&_refCount);
+        auto refIncResult = ++_refCount;
 
 #ifdef SEND_DEBUG
-		auto index = InterlockedIncrement(&debugIndex);
+		auto index = ++debugIndex;
 		release_D[index % debugSize] = { refIncResult,content,0 };
 #else
         UNREFERENCED_PARAMETER(content);
@@ -50,10 +52,10 @@ public:
 
     void Release(LPCWCH content = L"")
     {
-        auto refResult = InterlockedDecrement(&_refCount);
+        auto refResult = --_refCount;
 
 #ifdef SEND_DEBUG
-		auto index = InterlockedIncrement(&debugIndex);
+		auto index = ++debugIndex;
 		release_D[index % debugSize] = { refResult,content,0 };
 #else
         UNREFERENCED_PARAMETER(content);
@@ -71,10 +73,10 @@ public:
     }
 
     template <typename T>
-    CSendBuffer& operator <<(const T& value);
-    CSendBuffer& operator <<(LPWSTR value);
-    CSendBuffer& operator <<(psh::LPCWSTR value);
-    CSendBuffer& operator <<(const String& value);
+    SendBufferImpl& operator <<(const T& value);
+    SendBufferImpl& operator <<(LPWSTR value);
+    SendBufferImpl& operator <<(psh::LPCWSTR value);
+    SendBufferImpl& operator <<(const String& value);
 
     void SetWstr(psh::LPCWSTR arr, int size);
     void SetCstr(LPCSTR arr, int size);
@@ -84,24 +86,23 @@ public:
         return static_cast<int>(BUFFER_SIZE - std::distance(_data, _rear));
     }
 
-    //TODO:Private로 이동
-    long _refCount = 0;
+
 
 private:
     //버퍼랑 데이터 위치는 고정. 헤더랑 딴 건 가변
-    CSendBuffer();
-    ~CSendBuffer() = default;
+    SendBufferImpl();
+    ~SendBufferImpl() = default;
 
-    CSendBuffer(const CSendBuffer& other) = delete;
+    SendBufferImpl(const SendBufferImpl& other) = delete;
 
-    CSendBuffer(CSendBuffer&& other) noexcept = delete;
+    SendBufferImpl(SendBufferImpl&& other) noexcept = delete;
 
-    CSendBuffer& operator=(const CSendBuffer& other) = delete;
+    SendBufferImpl& operator=(const SendBufferImpl& other) = delete;
 
-    CSendBuffer& operator=(CSendBuffer&& other) noexcept = delete;
+    SendBufferImpl& operator=(SendBufferImpl&& other) noexcept = delete;
 
 private:
-    bool CopyData(CSendBuffer& dst) const;
+    bool CopyData(SendBufferImpl& dst) const;
 
     void Clear()
     {
@@ -164,7 +165,7 @@ private:
 private:
     enum bufferOption { BUFFER_SIZE = 2048 };
 
-
+    std::atomic<long> _refCount = 0;
     char _buffer[BUFFER_SIZE + sizeof(NetHeader)];
     char* _data = nullptr;
     char* _head = nullptr;
@@ -173,10 +174,9 @@ private:
     int _bufferSize = BUFFER_SIZE;
     char isEncrypt = false;
 
-    static TlsPool<CSendBuffer, 0, false> _pool;
+    static TlsPool<SendBufferImpl, 0, false> _pool;
 
-
-    SRWLOCK _encodeLock;
+    std::shared_mutex _encodeLock;
 
     static constexpr int SERIAL_INIT_SIZE = 500;
     static constexpr int SERIAL_INIT_MULTIPLIER = 20;
@@ -192,7 +192,7 @@ private:
 	};
 	static const int debugSize = 1000;
 
-	long debugIndex = 0;
+	std::atomic<long> debugIndex = 0;
 	RelastinReleaseEncrypt_D release_D[debugSize];
 
 	//static void PoolDebug()
@@ -209,7 +209,7 @@ private:
 };
 
 template <typename T>
-CSendBuffer& CSendBuffer::operator<<(const T& value)
+SendBufferImpl& SendBufferImpl::operator<<(const T& value)
 {
     static_assert(std::is_scalar_v<T>);
     CanPush(sizeof(T));
