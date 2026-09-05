@@ -28,7 +28,7 @@ public:
         ,
     };
 
-    void Init(psh::LPCWSTR location = L"serverSetting.txt");
+    void Init(psh::LPCWSTR location = L"serverSetting.toml");
 
     template <typename T>
     void GetValue(const String name, T& value)
