@@ -10,7 +10,7 @@
 #include <Windows.h>
 #endif
 
-std::string psh::util::WToS(const std::wstring &wstr)
+std::string psh::util::WToS(std::wstring_view wstr)
 {
     if (wstr.empty())
         return {};

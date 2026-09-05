@@ -45,7 +45,7 @@ void SettingParser::Init(const psh::LPCWSTR location)
 void SettingParser::LoadSetting(const psh::LPCWSTR location)
 {
     _settings.clear();
-    const auto config = toml::parse_file(psh::util::WToS(String{location}));
+    const auto config = toml::parse_file(psh::util::WToS(location));
 
     for (const auto& [groupName, groupNode] : config)
     {

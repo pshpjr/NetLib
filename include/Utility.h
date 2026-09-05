@@ -14,7 +14,7 @@
 
 namespace psh::util
 {
-    std::string WToS(const std::wstring& wstr) ;
+    std::string WToS(std::wstring_view wstr) ;
 
 }
 
