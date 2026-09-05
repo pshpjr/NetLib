@@ -321,7 +321,7 @@ void Group::RecvHandler(Session& session, void* iocp)
                 int frontIndex = recvQ.GetFrontIndex();
                 SessionID id = session.GetSessionId();
                 _groupLogger->Write(L"Disconnect", Logger::LogLevel::Debug
-                    , L"Group WrongPacketCode, SessionID : %d\n frontIndex: %d \n", id, frontIndex);
+                    , L"Group WrongPacketCode, SessionID : %d\n frontIndex: %d \n", id.id, frontIndex);
                 session.Close();
                 break;
             }
@@ -331,7 +331,7 @@ void Group::RecvHandler(Session& session, void* iocp)
                 int frontIndex = recvQ.GetFrontIndex();
                 SessionID id = session.GetSessionId();
                 _groupLogger->Write(L"Disconnect", Logger::LogLevel::Debug
-                    , L"Group WrongPacketLen, SessionID : %d\n index: %d \n", id, frontIndex);
+                    , L"Group WrongPacketLen, SessionID : %d\n index: %d \n", id.id, frontIndex);
                 session.Close();
                 break;
             }
@@ -351,7 +351,7 @@ void Group::RecvHandler(Session& session, void* iocp)
             if (!recvQ.ChecksumValid())
             {
                 _groupLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"Group Invalid Checksum %d"
-                    , session.GetSessionId());
+                    , session.GetSessionId().id);
                 session.Close();
                 break;
             }

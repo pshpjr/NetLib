@@ -60,7 +60,7 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
             {
                 int frontIndex = recvQ.GetFrontIndex();
                 gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketCode id : %d\n index: %d \n"
-                    , session.GetSessionId(), frontIndex);
+                    , session.GetSessionId().id, frontIndex);
                 session.Close();
                 break;
             }
@@ -69,7 +69,7 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
             {
                 int frontIndex = recvQ.GetFrontIndex();
                 gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketLen id : %d\n index: %d \n"
-                    , session.GetSessionId(), frontIndex);
+                    , session.GetSessionId().id, frontIndex);
                 session.Close();
                 break;
             }
@@ -97,7 +97,7 @@ void RecvExecutable::RecvHandler(Session& session, void* iocp)
             if (!recvQ.ChecksumValid())
             {
                 gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"Recv Invalid Checksum id : %d"
-                    , session.GetSessionId());
+                    , session.GetSessionId().id);
                 session.Close();
                 break;
             }

@@ -489,7 +489,7 @@ void Session::RealSend()
             break;
         default:
             gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error
-                , GetSessionId());
+                , GetSessionId().id);
             __debugbreak();
         }
         Release(L"SendErrorRelease");

@@ -65,6 +65,7 @@ endif()
 
 # 외부 라이브러리
 find_package(CURL REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(Iconv REQUIRED)
 find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
@@ -82,6 +83,8 @@ target_link_libraries(NetLib PRIVATE
     unofficial::libmysql::libmysql
     redis++::redis++
 )
+
+target_link_libraries(NetLib PUBLIC fmt::fmt)
 
 # 테스트
 option(

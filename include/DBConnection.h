@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <chrono>
+#include <fmt/printf.h>
 #include "Types.h"
 
 class DBConnection
@@ -12,7 +13,13 @@ public:
     ~DBConnection();
 
 
-    std::chrono::milliseconds Query(psh::LPCSTR query, ...);
+    template <typename... Args>
+    std::chrono::milliseconds Query(const psh::LPCSTR format, Args... args)
+    {
+        return QueryInternal(fmt::vsprintf(
+            fmt::string_view(format.data(), format.size()),
+            fmt::make_printf_args(args...)));
+    }
 
     bool next();
 
@@ -33,6 +40,8 @@ public:
     void SetReconnect(bool useReconnect);
 
 private:
+    std::chrono::milliseconds QueryInternal(std::string_view query);
+
     struct Imple;
     std::unique_ptr<Imple> pImple;
 };

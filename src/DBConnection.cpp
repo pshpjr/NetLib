@@ -18,7 +18,7 @@ struct DBConnection::Imple
 
     //SetReconnect(true);
 
-    pImple->connection = mysql_real_connect(&pImple->conn, ip, id, pass, db, port, nullptr, 0);
+    pImple->connection = mysql_real_connect(&pImple->conn, ip.data(), id.data(), pass.data(), db.data(), port, nullptr, 0);
     if (pImple->connection == nullptr)
     {
         const char* err = nullptr;
@@ -41,32 +41,17 @@ DBConnection::~DBConnection()
     Close();
 }
 
-std::chrono::milliseconds DBConnection::Query(psh::LPCSTR query, ...)
+std::chrono::milliseconds DBConnection::QueryInternal(const std::string_view query)
 {
     using std::string;
     using std::chrono::steady_clock;
     using std::chrono::duration_cast;
-    using std::chrono::duration;
     using std::chrono::milliseconds;
-    using namespace std::chrono_literals;
-
-    std::string queryString;
-
-    va_list args;
-
-    va_start(args, query);
-    const size_t len = vsnprintf(nullptr, 0, query, args);
-
-    queryString.resize(len + 1);
-    vsnprintf(&queryString[0], len + 1, query, args);
-
-    queryString.resize(len);
-    va_end(args);
 
     const auto start = steady_clock::now();
 
-    if (const int query_stat = mysql_real_query(pImple->connection, queryString.c_str()
-                                              , static_cast<unsigned long>(queryString.length()));
+    if (const int query_stat = mysql_real_query(pImple->connection, query.data()
+                                              , static_cast<unsigned long>(query.length()));
         query_stat != 0)
     {
         const char *err = mysql_error(&pImple->conn);

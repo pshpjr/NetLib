@@ -716,7 +716,7 @@ void IOCP::WorkerThread()
 
                 gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
                     , L"SemaphoreTimeout  sessionID : %d, executableType : %s, sendWait : %d recvWait : %d"
-                    , session->GetSessionId(), Executable::GetIoType(*overlapped).c_str(), sendWait, recvWait);
+                    , session->GetSessionId().id, Executable::GetIoType(*overlapped).c_str(), sendWait.count(), recvWait.count());
                 session->SetErr(errNo);
                 ++_tcpSemaphoreTimeout;
                 break;
@@ -726,7 +726,7 @@ void IOCP::WorkerThread()
             //서버가 먼저 끊는 상황에서 발생.
             case WSA_OPERATION_ABORTED:
                 gLogger->Write(L"ConnectionError", Logger::LogLevel::Debug
-                    , L"Operation Aborted sessionID : %d, executableType : %s", session->GetSessionId()
+                    , L"Operation Aborted sessionID : %d, executableType : %s", session->GetSessionId().id
                     , Executable::GetIoType(*overlapped).c_str());
                 session->SetErr(errNo);
                 break;
@@ -734,13 +734,13 @@ void IOCP::WorkerThread()
             //생기면 안 됨. 
             case ERROR_CONNECTION_ABORTED:
                 gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
-                    , L"Connection Aborted sessionID : %d, executableType : %s", session->GetSessionId()
+                    , L"Connection Aborted sessionID : %d, executableType : %s", session->GetSessionId().id
                     , Executable::GetIoType(*overlapped).c_str());
                 session->SetErr(errNo);
                 break;
             case ERROR_NOT_FOUND:
                 gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
-                    , L"Error Not Found sessionID : %d, executableType : %s", session->GetSessionId()
+                    , L"Error Not Found sessionID : %d, executableType : %s", session->GetSessionId().id
                     , Executable::GetIoType(*overlapped).c_str());
                 session->SetErr(errNo);
                 break;
