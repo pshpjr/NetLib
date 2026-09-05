@@ -52,6 +52,8 @@ IOCP::IOCP(bool server)
 
 bool IOCP::Init()
 {
+    //REFACTOR: IOCP 내부에서 읽어오면 안 됨. 외부에서 설정 넣어줘야 함.
+    //get value or default로 에러는 발생하지 않게.
     _settingParser->Init();
 
     _settingParser->GetValue(L"basic.ip", _ip);
@@ -342,7 +344,8 @@ void IOCP::ReleaseFreeIndex(unsigned short index)
 WSAResult<SessionID> IOCP::GetClientSession(const String& ip, const Port port)
 {
     unsigned short index;
-    GetFreeIndex(index);
+    if (GetFreeIndex(index))
+        return 0;
 
     Socket s;
     s.Init();
