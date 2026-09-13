@@ -18,5 +18,19 @@
     "libiconv",
     "tomlplusplus",
     "fmt"
-  ]
+  ],
+  "features": {
+    "tracy": {
+      "description": "Enable optional Tracy profiling",
+      "dependencies": [
+        {
+          "name": "tracy",
+          "default-features": false,
+          "features": [
+            "on-demand"
+          ]
+        }
+      ]
+    }
+  }
 }

@@ -78,7 +78,7 @@ public:
     SendBufferImpl& operator <<(const String& value);
 
     void SetWstr(psh::LPCWSTR arr, int size);
-    void SetCstr(LPCSTR arr, int size);
+    void SetCstr(psh::LPCSTR arr, int size);
 
     int CanPushSize() const
     {

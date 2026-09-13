@@ -16,7 +16,7 @@
 #include "GroupManager.h"
 #include "IOCP.h"
 #include "LockFreeStack.h"
-#include "optick.h"
+#include "Profiler.h"
 #include "SendBuffer.h"
 #include "Session.h"
 #include "SettingParser.h"
@@ -247,7 +247,7 @@ void IOCP::SetDefaultTimeout(const unsigned int timeoutMillisecond)
 /*****************************/
 bool IOCP::SendPacket(const SessionID sessionId, const SendBuffer& sendBuffer, int type)
 {
-    OPTICK_EVENT()
+    PRO_FUNCTION();
     auto buffer = sendBuffer.getBuffer();
     const auto result = FindSession(sessionId, L"SendPacketInc");
     if (result == nullptr)
@@ -346,7 +346,7 @@ bool IOCP::SendPackets(const SessionID sessionId, std::vector<SendBuffer>& bufAr
 
 void IOCP::ProcessBuffer(Session& session, SendBufferImpl& buffer)
 {
-    OPTICK_EVENT()
+    PRO_FUNCTION();
     buffer.IncreaseRef(L"ProcessBuffInc");
     if (buffer.GetDataSize() == 0)
     {
@@ -757,7 +757,7 @@ void IOCP::WorkerThread()
 {
     psh::util::set_thread_name("IOCP Worker Thread");
     using namespace std::chrono;
-    OPTICK_THREAD("WORKER");
+    PRO_THREAD("WORKER");
 
     srand(GetCurrentThreadId());
     while (true)

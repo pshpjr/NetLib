@@ -9,7 +9,7 @@
 #include "IOCP.h"
 #include "Profiler.h"
 #include "Protocol.h"
-#include "optick.h"
+#include "Profiler.h"
 #include "stdafx.h"
 
 Group::Group()
@@ -54,7 +54,7 @@ bool Group::Enqueue(GroupJob job, bool update)
 {
 	{
 		// 그룹이 가득 찰 정도면 서버가 엄청 바쁜 거
-		OPTICK_EVENT();
+		PRO_FUNCTION();
 		while (!_jobs->Enqueue(job))
 		{
 			std::this_thread::yield();
@@ -81,7 +81,7 @@ void Group::Update()
 	{
 		return;
 	}
-	OPTICK_FRAME("Group HandleJob");
+	PRO_FRAME("Group HandleJob");
 
 	auto start = steady_clock::now();
 	while (hasJob() || NeedUpdate())
@@ -124,7 +124,7 @@ bool Group::HandleJob()
 	int jobs = 0;
 	while (_jobs->Dequeue(job))
 	{
-		OPTICK_EVENT("HandleJob");
+		PRO_BEGIN("HandleJob");
 		++jobs;
 		switch (job.type)
 		{

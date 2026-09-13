@@ -1,7 +1,8 @@
+#include "Profiler.h"
 #include "Session.h"
 
 #include <iostream>
-#include <optick.h>
+
 #include <optional>
 
 #include "SendBufferImpl.h"
@@ -38,7 +39,7 @@ Session::Session(Socket socket, SessionID sessionId, IOCP& owner)
 
 bool Session::CanSend()
 {
-	OPTICK_EVENT()
+	PRO_FUNCTION();
 	if (_connect == false)
 	{
 		return false;
@@ -438,7 +439,7 @@ void Session::PostRelease()
 
 void Session::RealSend()
 {
-	OPTICK_EVENT()
+	PRO_FUNCTION();
 
 
 	const auto refIncResult = IncreaseRef(L"realSendInc");

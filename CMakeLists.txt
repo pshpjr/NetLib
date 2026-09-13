@@ -42,7 +42,6 @@ add_library(NetLib STATIC
         src/NormalSocket.cpp
         src/PostSendExecutable.cpp
         src/ProcessMonitor.cpp
-        src/Profiler.cpp
         src/RecvExecutable.cpp
         src/RedisConnection.cpp
         src/ReleaseExecutable.cpp
@@ -89,27 +88,13 @@ target_link_libraries(NetLib PUBLIC
         kernel32
 )
 
-file(GLOB PUB_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/*.lib")
-foreach (lib ${PUB_LIBS})
-    target_link_libraries(NetLib INTERFACE ${lib})
-endforeach ()
-
-# 빌드 타입에 따른 외부 라이브러리 링크
-if (CMAKE_CONFIGURATION_TYPES STREQUAL "")
-    # no-op
+# Profiling is optional and its public macros must match consumers.
+option(NETLIB_ENABLE_TRACY "Enable Tracy profiler integration" OFF)
+if(NETLIB_ENABLE_TRACY)
+    find_package(Tracy CONFIG REQUIRED)
+    target_compile_definitions(NetLib PUBLIC NETLIB_ENABLE_TRACY)
+    target_link_libraries(NetLib PUBLIC Tracy::TracyClient)
 endif()
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    file(GLOB EXTERNAL_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/debug/*.lib")
-elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-    file(GLOB EXTERNAL_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/release/*.lib")
-elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-    file(GLOB EXTERNAL_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/lib/release/*.lib")
-endif ()
-
-list(FILTER EXTERNAL_LIBS INCLUDE REGEX "OptickCore")
-foreach (lib ${EXTERNAL_LIBS})
-    target_link_libraries(NetLib INTERFACE ${lib})
-endforeach ()
 
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(NetLib PUBLIC fmt::fmt)

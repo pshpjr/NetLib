@@ -17,7 +17,8 @@ DBConnection::DBConnection(const psh::LPCSTR ip, const psh::uint32 port, const p
 {
     mysql_init(&pImple->conn);
 
-    pImple->connection = mysql_real_connect(&pImple->conn, ip, id, pass, db, port, nullptr, 0);
+    const std::string host(ip), user(id), password(pass), database(db);
+    pImple->connection = mysql_real_connect(&pImple->conn, host.c_str(), user.c_str(), password.c_str(), database.c_str(), port, nullptr, 0);
     if (pImple->connection == nullptr)
     {
         const char* err = nullptr;
