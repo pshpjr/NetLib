@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <variant>
 
 #ifndef _WIN32
@@ -15,7 +16,8 @@
 
 namespace psh::util
 {
-    std::string WToS(const std::wstring &wstr);
+    std::string WToS(std::wstring_view wstr);
+    std::wstring SToW(std::string_view str);
 
     void set_thread_name(const char *threadName);
 }

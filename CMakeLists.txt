@@ -112,9 +112,10 @@ foreach (lib ${EXTERNAL_LIBS})
 endforeach ()
 
 find_package(CURL REQUIRED)
+find_package(Iconv REQUIRED)
 find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
-target_link_libraries(NetLib PRIVATE CURL::libcurl unofficial::libmysql::libmysql redis++::redis++)
+target_link_libraries(NetLib PRIVATE Iconv::Iconv CURL::libcurl unofficial::libmysql::libmysql redis++::redis++)
 
 # 외부 패키지 링크 설정s
 

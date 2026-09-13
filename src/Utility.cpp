@@ -4,8 +4,13 @@
 
 #include "Utility.h"
 
-#include <codecvt>
-#include <locale>
+#include <iconv.h>
+#include <cstring>
+#include <array>
+#include <cerrno>
+#include <memory>
+#include <system_error>
+
 
 #include "concurrentqueue.h"
 
@@ -14,10 +19,56 @@
 #include <Windows.h>
 #endif
 
-std::string psh::util::WToS(const std::wstring &wstr)
+namespace
 {
-    std::wstring_convert<std::codecvt_utf8<wchar_t> > converter;
-    return converter.to_bytes(wstr);
+std::string ConvertEncoding(std::string_view input, const char* to, const char* from)
+{
+    if (input.empty()) return {};
+    const auto descriptor = iconv_open(to, from);
+    if (descriptor == reinterpret_cast<iconv_t>(-1))
+        throw std::system_error(errno, std::generic_category(), "iconv_open");
+    const std::unique_ptr<void, decltype(&iconv_close)> converter(descriptor, &iconv_close);
+
+    std::string source(input);
+    char* sourcePtr = source.data();
+    size_t sourceBytes = source.size();
+    std::array<char, 1024> buffer;
+    std::string output;
+    const auto convert = [&](bool flush)
+    {
+        for (;;)
+        {
+            char* destination = buffer.data();
+            size_t available = buffer.size();
+            const auto result = iconv(converter.get(), flush ? nullptr : &sourcePtr,
+                flush ? nullptr : &sourceBytes, &destination, &available);
+            const int error = errno;
+            output.append(buffer.data(), buffer.size() - available);
+            if (result != static_cast<size_t>(-1)) return;
+            if (error != E2BIG)
+                throw std::system_error(error, std::generic_category(), "iconv");
+        }
+    };
+    convert(false);
+    convert(true);
+    return output;
+}
+}
+
+std::string psh::util::WToS(std::wstring_view wstr)
+{
+    if (wstr.empty()) return {};
+    return ConvertEncoding({reinterpret_cast<const char*>(wstr.data()),
+        wstr.size() * sizeof(wchar_t)}, "UTF-8", "WCHAR_T");
+}
+
+std::wstring psh::util::SToW(std::string_view str)
+{
+    if (str.empty()) return {};
+    const auto bytes = ConvertEncoding(str, "WCHAR_T", "UTF-8");
+    std::wstring result(bytes.size() / sizeof(wchar_t), L'\0');
+    std::memcpy(result.data(), bytes.data(), bytes.size());
+    return result;
 }
 
 // 디버거에게 스레드 이름을 전달하는 예외 처리
