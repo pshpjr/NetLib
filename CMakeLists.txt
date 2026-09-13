@@ -111,6 +111,8 @@ foreach (lib ${EXTERNAL_LIBS})
     target_link_libraries(NetLib INTERFACE ${lib})
 endforeach ()
 
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(NetLib PUBLIC fmt::fmt)
 find_package(CURL REQUIRED)
 find_package(Iconv REQUIRED)
 find_path(TOMLPLUSPLUS_INCLUDE_DIR NAMES toml++/toml.hpp REQUIRED)

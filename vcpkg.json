@@ -16,6 +16,7 @@
       "name": "redis-plus-plus"
     },
     "libiconv",
-    "tomlplusplus"
+    "tomlplusplus",
+    "fmt"
   ]
 }

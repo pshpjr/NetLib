@@ -1,5 +1,6 @@
-﻿#pragma once
+#pragma once
 #include <chrono>
+#include <fmt/printf.h>
 #include "Types.h"
 
 class DBConnection
@@ -14,8 +15,11 @@ public:
     template <typename... Args>
     std::chrono::microseconds QueryFormat(std::string_view query, Args&&... args);
 
-    [[deprecated("Use QueryFormat(psh::LPCSTR, ...)")]]
-    std::chrono::microseconds Query(psh::LPCSTR query, ...);
+    template <typename... Args>
+    std::chrono::microseconds Query(std::string_view query, const Args&... args)
+    {
+        return ExecuteQuery(fmt::sprintf(fmt::string_view(query.data(), query.size()), args...));
+    }
 
     //저장 프로시저 호출용
     template<typename... Args>

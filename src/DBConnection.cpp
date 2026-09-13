@@ -75,33 +75,6 @@ std::chrono::microseconds DBConnection::ExecuteQuery(const std::string& queryStr
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start);
 }
 
-std::chrono::microseconds DBConnection::Query(psh::LPCSTR query, ...)
-{
-    using std::string;
-    using std::chrono::steady_clock;
-    using std::chrono::duration_cast;
-    using std::chrono::duration;
-    using std::chrono::microseconds;
-    using namespace std::chrono_literals;
-
-    std::string queryString;
-
-    va_list args;
-
-    // 첫 번째 vsnprintf 호출로 포맷된 문자열 길이 계산
-    va_start(args, query);
-    const size_t len = vsnprintf(nullptr, 0, query, args);
-    va_end(args);
-
-    // 접두사 뒤에 포맷된 문자열을 담기 위해 버퍼 크기 조정
-    queryString.resize(len + 1);
-
-    va_start(args, query);
-    vsnprintf(&queryString[0], len + 1, query, args);
-    va_end(args);
-
-    return ExecuteQuery(queryString);
-}
 
 bool DBConnection::next()
 {
