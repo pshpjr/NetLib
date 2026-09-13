@@ -5,7 +5,7 @@
 
 SubnetManager::SubnetManager()
 {
-    _subnetParser.Init(L"subnetSetting.txt");
+    _subnetParser.Init(L"subnetSetting.toml");
     LoadSubnets();
 }
 
@@ -36,7 +36,7 @@ std::optional<SubnetManager::SubnetInfo> SubnetManager::FindSubnet(Vector<Subnet
 
 void SubnetManager::LoadSubnets()
 {
-    _subnetParser.Init(L"subnetSetting.txt");
+    _subnetParser.Init(L"subnetSetting.toml");
     LoadSubnetGroup(L"LAN", _lanSubnet);
     LoadSubnetGroup(L"WAN", _wanSubnet);
 }
