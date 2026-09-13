@@ -172,19 +172,14 @@ private:
     void onRecvPacket(const Session& session, RecvBuffer& buffer);
 
     //WorkerThreadFunc
-    void GroupThread(LPVOID arg);
-    void WorkerThread(LPVOID arg);
-    void AcceptThread(LPVOID arg);
-    void MonitorThread(LPVOID arg);
-    void TimeoutThread(LPVOID arg);
+    void GroupThread();
+    void WorkerThread();
+    void AcceptThread();
+    void MonitorThread();
+    void TimeoutThread();
 
 
-    static unsigned __stdcall GroupEntry(LPVOID arg);
-    static unsigned __stdcall WorkerEntry(LPVOID arg);
-    static unsigned __stdcall AcceptEntry(LPVOID arg);
 
-    static unsigned __stdcall MonitorEntry(LPVOID arg);
-    static unsigned __stdcall TimeoutEntry(LPVOID arg);
 };
 
 

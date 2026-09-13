@@ -4,7 +4,7 @@
 #include <chrono>
 #include <format>
 #include <iostream>
-#include <process.h>
+
 
 #include "MyWindows.h"
 #include "CpuUsage.h"
@@ -38,7 +38,6 @@ IOCP::IOCP(bool server)
         ReleaseFreeIndex(i);
     }
     _groupManager = std::make_unique<GroupManager>(this);
-    _this = this;
 
     for (auto& session : _sessions)
     {
@@ -79,7 +78,7 @@ bool IOCP::ClientInit(psh::uint16 maxRunningThread
 {
     _staticKey = staticKey;
     _iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, maxRunningThread);
-    if (_iocp == INVALID_HANDLE_VALUE)
+    if (_iocp == nullptr)
     {
         _listenSocket->Close();
         return false;
@@ -88,53 +87,23 @@ bool IOCP::ClientInit(psh::uint16 maxRunningThread
 
     for (int i = 0; i < workerThread; ++i)
     {
-        auto handle = (HANDLE)_beginthreadex(nullptr, 0, WorkerEntry, _this, 0, nullptr);
-        if (handle == INVALID_HANDLE_VALUE)
-        {
-            _listenSocket->Close();
-            return false;
-        }
-
-        _threadArray.push_back({handle, GetThreadId(handle)});
-
-        printf("WorkerThread %p\n", handle);
+        _threadArray.emplace_back(&IOCP::WorkerThread, this);
     }
 
     if (useGroup)
     {
-        const auto groupT = (HANDLE)_beginthreadex(nullptr, 0, GroupEntry, _this, 0, nullptr);
-        if (groupT == INVALID_HANDLE_VALUE)
-        {
-            _listenSocket->Close();
-            return false;
-        }
-        _threadArray.push_back({groupT, GetThreadId(groupT)});
-        printf("GroupThread %p\n", groupT);
+        _threadArray.emplace_back(&IOCP::GroupThread, this);
     }
 
     if (useTimeout)
     {
-        const auto timeoutT = (HANDLE)_beginthreadex(nullptr, 0, TimeoutEntry, _this, 0, nullptr);
-        if (timeoutT == INVALID_HANDLE_VALUE)
-        {
-            _listenSocket->Close();
-            return false;
-        }
-        _threadArray.push_back({timeoutT, GetThreadId(timeoutT)});
-        printf("TimeoutThread %p\n", timeoutT);
+        _threadArray.emplace_back(&IOCP::TimeoutThread, this);
     }
 
 
     if (useMonitor)
     {
-        const auto monitorT = (HANDLE)_beginthreadex(nullptr, 0, MonitorEntry, _this, 0, nullptr);
-        if (monitorT == INVALID_HANDLE_VALUE)
-        {
-            _listenSocket->Close();
-            return false;
-        }
-        _threadArray.push_back({monitorT, GetThreadId(monitorT)});
-        printf("MonitorThread %p\n", monitorT);
+        _threadArray.emplace_back(&IOCP::MonitorThread, this);
     }
 
     return true;
@@ -155,7 +124,7 @@ bool IOCP::Init(const String& ip
     _ip = ip;
     _port = port;
 
-    _threadArray.resize(workerThread);
+    _threadArray.reserve(workerThread + 4);
 
     _listenSocket->Init();
     if (_listenSocket->IsValid() == false)
@@ -177,16 +146,9 @@ bool IOCP::Init(const String& ip
         return false;
     }
 
-    const auto acceptT = (HANDLE)_beginthreadex(nullptr, 0, AcceptEntry, _this, 0, nullptr);
-    if (acceptT == INVALID_HANDLE_VALUE)
-    {
-        _listenSocket->Close();
-        return false;
-    }
-    _threadArray.push_back({acceptT, GetThreadId(acceptT)});
-    printf("AcceptThread %p\n", acceptT);
+    _threadArray.emplace_back(&IOCP::AcceptThread, this);
 
-    if (ClientInit(_maxNetThread, _maxWorkerThread, _staticKey, true, true, true))
+    if (!ClientInit(_maxNetThread, _maxWorkerThread, _staticKey, true, true, true))
     {
         return false;
     }
@@ -198,8 +160,9 @@ bool IOCP::Init(const String& ip
 
 void IOCP::Start()
 {
-    InterlockedExchange8(&_isRunning, true);
-    WakeByAddressAll(&_isRunning);
+    _isRunning.store(true);
+    _startSignal.store(true);
+    _startSignal.notify_all();
     OnStart();
 }
 
@@ -231,39 +194,23 @@ stop을 쏘고 패킷을 또 보내는 멍청한 짓을 하면 그것도 처리�
 
 void IOCP::Stop()
 {
-    _isRunning = false;
+    _isRunning.store(false);
+    _startSignal.store(true);
+    _startSignal.notify_all();
     _listenSocket->Close();
     PostQueuedCompletionStatus(_iocp, 0, 0, nullptr);
-
-
-    for (const auto [h, id] : _threadArray)
+    for (auto& thread : _threadArray)
     {
-        if (id == GetCurrentThreadId())
-        {
-            continue;
-        }
-        if (const auto result = WaitForSingleObject(h, INFINITE);
-            result != WAIT_OBJECT_0)
-        {
-            printf("WaitForMultipleObjects failed %d %d\n", result, GetLastError());
-        }
+        if (thread.joinable() && thread.get_id() != std::this_thread::get_id()) thread.join();
     }
-
-    InterlockedExchange8(&gracefulEnd, true);
     OnEnd();
-    WakeByAddressSingle(&gracefulEnd);
+    gracefulEnd.store(true);
+    gracefulEnd.notify_all();
 }
 
 void IOCP::Wait()
 {
-    char unExpect = false;
-    char capture = gracefulEnd;
-
-    while (capture == unExpect)
-    {
-        WaitOnAddress(&gracefulEnd, &unExpect, sizeof(unExpect), INFINITE);
-        capture = gracefulEnd;
-    }
+    gracefulEnd.wait(false);
 }
 
 void IOCP::SetTimeout(const SessionID sessionId, const int timeoutMillisecond)
@@ -778,53 +725,16 @@ void IOCP::PrintMonitorString() const
 		 ThreadFunc
 *****************************/
 
-unsigned __stdcall IOCP::GroupEntry(const LPVOID arg)
+
+
+
+
+
+void IOCP::GroupThread()
 {
     psh::util::set_thread_name("IOCP Group Thread");
-    const auto iocp = static_cast<IOCP*>(arg);
-
-    iocp->GroupThread(nullptr);
-    return 0;
-}
-
-unsigned __stdcall IOCP::MonitorEntry(const LPVOID arg)
-{
-    psh::util::set_thread_name("IOCP Monitor Thread");
-    const auto iocp = static_cast<IOCP*>(arg);
-
-    iocp->MonitorThread(nullptr);
-    return 0;
-}
-
-unsigned __stdcall IOCP::TimeoutEntry(const LPVOID arg)
-{
-    psh::util::set_thread_name("IOCP Timeout Thread");
-    const auto iocp = static_cast<IOCP*>(arg);
-    iocp->TimeoutThread(nullptr);
-    return 0;
-}
-
-unsigned __stdcall IOCP::WorkerEntry(const LPVOID arg)
-{
-    psh::util::set_thread_name("IOCP Worker Thread");
-    const auto iocp = static_cast<IOCP*>(arg);
-    iocp->WorkerThread(nullptr);
-    return 0;
-}
-
-unsigned __stdcall IOCP::AcceptEntry(const LPVOID arg)
-{
-    psh::util::set_thread_name("IOCP Accept Thread");
-    const auto iocp = static_cast<IOCP*>(arg);
-    iocp->AcceptThread(nullptr);
-    return 0;
-}
-
-void IOCP::GroupThread(LPVOID arg)
-{
     using namespace std::chrono;
 
-    UNREFERENCED_PARAMETER(arg);
 
     WaitStart();
     const auto start = steady_clock::now();
@@ -843,11 +753,11 @@ void IOCP::GroupThread(LPVOID arg)
     printf("GroupThread End\n");
 }
 
-void IOCP::WorkerThread(LPVOID arg)
+void IOCP::WorkerThread()
 {
+    psh::util::set_thread_name("IOCP Worker Thread");
     using namespace std::chrono;
     OPTICK_THREAD("WORKER");
-    UNREFERENCED_PARAMETER(arg);
 
     srand(GetCurrentThreadId());
     while (true)
@@ -951,9 +861,9 @@ void IOCP::WorkerThread(LPVOID arg)
 
 //iocp 에서 완료 통지가 올 때 처리는 소켓마다 달라진다
 
-void IOCP::AcceptThread(LPVOID arg)
+void IOCP::AcceptThread()
 {
-    UNREFERENCED_PARAMETER(arg);
+    psh::util::set_thread_name("IOCP Accept Thread");
     WaitStart();
 
     while (_isRunning)
@@ -1019,10 +929,10 @@ void IOCP::AcceptThread(LPVOID arg)
     printf("AcceptThreadEnd\n");
 }
 
-void IOCP::MonitorThread(LPVOID arg)
+void IOCP::MonitorThread()
 {
+    psh::util::set_thread_name("IOCP Monitor Thread");
     using namespace std::chrono;
-    UNREFERENCED_PARAMETER(arg);
 
     WaitStart();
     const auto start = steady_clock::now();
@@ -1056,10 +966,10 @@ void IOCP::MonitorThread(LPVOID arg)
     printf("MonitorThread End\n");
 }
 
-void IOCP::TimeoutThread(LPVOID arg)
+void IOCP::TimeoutThread()
 {
+    psh::util::set_thread_name("IOCP Timeout Thread");
     using namespace std::chrono;
-    UNREFERENCED_PARAMETER(arg);
 
     WaitStart();
     const auto start = steady_clock::now();
@@ -1153,13 +1063,16 @@ void IOCP::postReleaseSession(SessionID id)
 
 NormalIOCP::~NormalIOCP()
 {
-    CloseHandle(_iocp);
-    for (const auto [h,id] : _threadArray)
+    _isRunning.store(false);
+    _startSignal.store(true);
+    _startSignal.notify_all();
+    _listenSocket->Close();
+    if (_iocp && _iocp != INVALID_HANDLE_VALUE) PostQueuedCompletionStatus(_iocp, 0, 0, nullptr);
+    for (auto& thread : _threadArray)
     {
-        printf("CloseHandle %p\n", h);
-
-        CloseHandle(h);
+        if (thread.joinable()) thread.join();
     }
+    if (_iocp && _iocp != INVALID_HANDLE_VALUE) CloseHandle(_iocp);
 }
 
 
@@ -1217,11 +1130,5 @@ unsigned short NormalIOCP::GetSessionIndex(const SessionID sessionID)
 
 void NormalIOCP::WaitStart()
 {
-    char unDesire = false;
-    char cur = _isRunning;
-    while (unDesire == cur)
-    {
-        WaitOnAddress(&_isRunning, &unDesire, sizeof(char), INFINITE);
-        cur = _isRunning;
-    }
+    _startSignal.wait(false);
 }

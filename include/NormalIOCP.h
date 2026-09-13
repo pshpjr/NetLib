@@ -1,5 +1,7 @@
 #pragma once
 #include <memory>
+#include <thread>
+#include <atomic>
 #include <optional>
 #include <vector>
 
@@ -118,7 +120,7 @@ protected:
     HANDLE _iocp = INVALID_HANDLE_VALUE;
     std::unique_ptr<Socket> _listenSocket;
 
-    std::vector<std::pair<HANDLE, DWORD>> _threadArray;
+    std::vector<std::thread> _threadArray;
     /*TODO: 타입들 전부 내 타입으로 수정하기
      */
     String _ip{};
@@ -128,10 +130,10 @@ protected:
     psh::uint16 _backlog = 0;
 
     bool _checkTiemout = true;
-    void* _this = nullptr;
     char _staticKey = 0;
-    char gracefulEnd = false;
-    char _isRunning = false;
+    std::atomic_bool gracefulEnd = false;
+    std::atomic_bool _isRunning = false;
+    std::atomic_bool _startSignal = false;
 
     /*
     *
