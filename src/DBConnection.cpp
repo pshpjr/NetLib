@@ -15,6 +15,7 @@ DBConnection::DBConnection(const psh::LPCSTR ip, const psh::uint32 port, const p
                            , const psh::LPCSTR db)
     : pImple(std::make_unique<Imple>())
 {
+    /*
     mysql_init(&pImple->conn);
 
     const std::string host(ip), user(id), password(pass), database(db);
@@ -30,11 +31,12 @@ DBConnection::DBConnection(const psh::LPCSTR ip, const psh::uint32 port, const p
     }
 
     SetReconnect(true);
+    */
 }
 
 void DBConnection::LibInit()
 {
-    mysql_library_init(0, nullptr, nullptr);
+    //mysql_library_init(0, nullptr, nullptr);
 }
 
 DBConnection::~DBConnection()
@@ -50,6 +52,7 @@ DBConnection::~DBConnection()
 
 std::chrono::microseconds DBConnection::ExecuteQuery(const std::string& queryString)
 {
+    /*
     const auto start = std::chrono::steady_clock::now();
 
     if (const int query_stat = mysql_real_query(pImple->connection, queryString.c_str()
@@ -74,13 +77,18 @@ std::chrono::microseconds DBConnection::ExecuteQuery(const std::string& queryStr
 
 
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start);
+    */
+    return std::chrono::microseconds::zero();
 }
 
 
 bool DBConnection::next()
 {
+    /*
     pImple->sql_row = mysql_fetch_row(pImple->sql_result);
     return pImple->sql_row != nullptr;
+    */
+    return false;
 }
 
 char* DBConnection::getString(const int index) const
@@ -112,16 +120,22 @@ double DBConnection::getDouble(const int index) const
 
 void DBConnection::reset()
 {
+    /*
     mysql_free_result(pImple->sql_result);
+    */
 }
 
 void DBConnection::Close()
 {
+    /*
     mysql_close(pImple->connection);
+    */
 }
 
 void DBConnection::SetReconnect(const bool useReconnect)
 {
+    /*
     const bool reconnect = useReconnect;
     mysql_options(&pImple->conn, MYSQL_OPT_RECONNECT, &reconnect);
+    */
 }
