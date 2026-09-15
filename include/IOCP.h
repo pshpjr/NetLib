@@ -29,7 +29,7 @@ class IOCP : public IOCP_CLASS
     friend class Client;
 
 public:
-    IOCP(bool server = true);
+    IOCP();
 
     bool Init();
     bool ClientInit(psh::uint16 maxRunningThread, psh::uint16 workerThread, char staticKey, bool useGroup

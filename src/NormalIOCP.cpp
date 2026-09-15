@@ -25,33 +25,24 @@
 //			INIT
 /*****************************/
 
-IOCP::IOCP(bool server)
+IOCP::IOCP()
 {
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-    {
-        _isRunning = false;
-    }
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
+		_isRunning = false;
+	}
 
-    for (psh::int16 i = MAX_SESSIONS - 1; i >= 0; i--)
-    {
-        ReleaseFreeIndex(i);
-    }
-    _groupManager = std::make_unique<GroupManager>(this);
+	for (psh::int16 i = MAX_SESSIONS - 1; i >= 0; i--)
+	{
+		ReleaseFreeIndex(i);
+	}
+	_groupManager = std::make_unique<GroupManager>(this);
 
-    for (auto& session : _sessions)
-    {
-        session.SetOwner(*this);
-    }
-
-    if (server)
-    {
-        Init();
-    }
-    else
-    {
-        printf("Client mode. Not Initialized. please call clientInit Func");
-    }
+	for (auto& session : _sessions)
+	{
+		session.SetOwner(*this);
+	}
 }
 
 bool IOCP::Init()
