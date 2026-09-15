@@ -11,7 +11,8 @@
 #include "Logger.h"
 #include "CoreGlobal.h"
 #include "RecvBuffer.h"
-#include "Executables.h"
+#include "Executable.h"
+#include "Protocol.h"
 
 // Construction
 Session::Session()
@@ -19,23 +20,66 @@ Session::Session()
 	  , _socket({})
 	  , _sendingQ()
 	  , _owner(nullptr)
-	  , _recvExecute(*new RecvExecutable)
-	  , _postSendExecute(*new PostSendExecutable)
-	  , _sendExecute(*new SendExecutable)
-	  , _releaseExecutable(*new ReleaseExecutable)
+	  , _recvExecute(*new Executable(Executable::IoType::Recv))
+	  , _postSendExecute(*new Executable(Executable::IoType::Postrecv))
+	  , _sendExecute(*new Executable(Executable::IoType::Send))
+	  , _releaseExecutable(*new Executable(Executable::IoType::Release))
 {
+	_recvExecute.SetCallback([this](ULONG_PTR, DWORD transferred, void* iocp)
+	{
+		_recvQ.MoveRear(transferred);
+		auto& server = *static_cast<IOCP*>(iocp);
+		if (GetGroupID() != GroupManager::BaseGroupID() && !recvHandleWaitInGroup())
+		{
+			setRecvHandled(true);
+			server._groupManager->OnRecv(GetSessionId(), GetGroupID(), transferred);
+		}
+		else if (_staticKey)
+		{
+			RecvHandler<NetHeader>(iocp);
+		}
+		else
+		{
+			RecvHandler<LANHeader>(iocp);
+		}
+		RecvNotIncrease();
+	});
+
+	_postSendExecute.SetCallback([this](ULONG_PTR, DWORD, void* iocp)
+	{
+		auto& server = *static_cast<IOCP*>(iocp);
+		const auto sentCount = _dataNotSend.exchange(0);
+		server.increaseSendCount(sentCount);
+		for (int i = 0; i < sentCount; i++)
+		{
+			_sendingQ[i]->Release(L"PostSendRelease");
+		}
+		_needCheckSendTimeout = false;
+		_isSending = false;
+		TrySend();
+		Release(L"PostSendRelease");
+	});
+
+	_sendExecute.SetCallback([this](ULONG_PTR, DWORD, void*)
+	{
+		RealSend();
+	});
+
+	_releaseExecutable.SetCallback([this](ULONG_PTR, DWORD, void*)
+	{
+		_owner->_onDisconnect(GetSessionId(), GetErr());
+		Reset();
+		const unsigned short index = GetSessionId().index;
+		_owner->ReleaseFreeIndex(index);
+	});
 }
 
 Session::Session(Socket socket, SessionID sessionId, IOCP& owner)
-	: _sessionId(sessionId)
-	  , _socket(socket)
-	  , _sendingQ()
-	  , _owner(&owner)
-	  , _recvExecute(*new RecvExecutable)
-	  , _postSendExecute(*new PostSendExecutable)
-	  , _sendExecute(*new SendExecutable)
-	  , _releaseExecutable(*new ReleaseExecutable)
+    : Session()
 {
+    _sessionId = sessionId;
+    _socket = socket;
+    _owner = &owner;
 }
 
 // Identity
@@ -113,7 +157,7 @@ void Session::Reset()
 	SetGroupID(GroupID(0));
 	_recvQ.Clear();
 
-	const int notSend = _postSendExecute.dataNotSend.exchange(0);
+	const int notSend = _dataNotSend.exchange(0);
 
 	for (int i = 0; i < notSend; i++)
 	{
@@ -268,15 +312,7 @@ void Session::RecvNotIncrease()
 	}
 	_recvExecute.Clear();
 
-	_recvExecute._recvBufSize[0] = 0;
-	_recvExecute._recvBufSize[1] = 0;
-	_recvExecute.isPending = false;
-
-	for (int i = 0; i < bufferCount; i++)
-	{
-		_recvExecute._recvBufSize[i] = recvWsaBuf[i].len;
-	}
-	ASSERT_CRASH(_recvExecute._recvBufSize[0] + _recvExecute._recvBufSize[1] != 0, "RecvBuffer is 0");
+	ASSERT_CRASH(recvWsaBuf[0].len + recvWsaBuf[1].len != 0, "RecvBuffer is 0");
 
 	lastRecv = std::chrono::steady_clock::now();
 
@@ -291,7 +327,6 @@ void Session::RecvNotIncrease()
 			//이렇게 확인하는 이유 : 컨텐츠에서 세션 연결 끊으려고 close 호출. 이 시점에 recv 안 걸려 있으면 iocount가 1인 상태로 유지됨.
 			// 이후 recv를 걸어버리면 세션이 살아있는 상태가 됨. 그래서 recv pending 이후 한 번 더 해보는 것.
 			//recv 성공했다면 다시 걸 때 위에서 return 할 것. 
-			_recvExecute.isPending = true;
 			if (_connect == false)
 			{
 				//하지만 ioPending 뜨고 나서 외부에서 연결 끊고, 해당 세션 release 타서 connect = false 된 상태에서 이 if문을 통과하고,
@@ -348,7 +383,7 @@ void Session::ResetTimeoutWait()
 {
 	const auto now = std::chrono::steady_clock::now();
 	lastRecv = now;
-	_postSendExecute.lastSend = now;
+	_lastSend = now;
 }
 
 // Packet format
@@ -454,12 +489,12 @@ void Session::RealSend()
 	}
 
 	_needCheckSendTimeout = true;
-	_postSendExecute.lastSend = std::chrono::steady_clock::now();
+	_lastSend = std::chrono::steady_clock::now();
 
 	constexpr DWORD flags = 0;
 	_postSendExecute.Clear();
 
-	_postSendExecute.dataNotSend = sendPackets;
+	_dataNotSend = sendPackets;
 
 	if (const int sendResult = _socket.Send(sendWsaBuf, sendPackets, flags, _postSendExecute.GetOverlapped());
 		sendResult == SOCKET_ERROR)
@@ -509,7 +544,7 @@ std::optional<timeoutInfo> Session::CheckTimeout(const std::chrono::steady_clock
 	}
 
 	const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
-	const auto sendWait = duration_cast<milliseconds>(now - _postSendExecute.lastSend);
+	const auto sendWait = duration_cast<milliseconds>(now - _lastSend);
 
 	std::optional<timeoutInfo> retVal{};
 	if (_needCheckSendTimeout && sendWait.count() > _timeout)
@@ -534,3 +569,92 @@ void Session::WriteContentLog(unsigned int type)
 	UNREFERENCED_PARAMETER(type);
 #endif
 }
+
+// Receive
+template <typename Header>
+void Session::RecvHandler(void* iocp)
+{
+	Session& session = *this;
+	IOCP& server = *static_cast<IOCP*>(iocp);
+	int loopCount = 0;
+
+	RingBuffer& recvQ = session._recvQ;
+	while (true)
+	{
+		if (session.GetGroupID() != GroupManager::BaseGroupID())
+		{
+			break;
+		}
+
+		if (recvQ.Size() < sizeof(Header))
+		{
+			break;
+		}
+
+
+		Header header;
+		recvQ.Peek(reinterpret_cast<char*>(&header), sizeof(Header));
+
+		if constexpr (std::is_same_v<Header, NetHeader>)
+		{
+			if (header.code != dfPACKET_CODE)
+			{
+				int frontIndex = recvQ.GetFrontIndex();
+				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketCode id : %d\n index: %d \n"
+				               , session.GetSessionId(), frontIndex);
+				session.Close();
+				break;
+			}
+
+			if (header.len > session._maxPacketLen)
+			{
+				int frontIndex = recvQ.GetFrontIndex();
+				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketLen id : %d\n index: %d \n"
+				               , session.GetSessionId(), frontIndex);
+				session.Close();
+				break;
+			}
+		}
+
+		if (header.len > recvQ.Size())
+		{
+			break;
+		}
+
+
+		if (const int totPacketSize = header.len + sizeof(Header);
+			recvQ.Size() < totPacketSize)
+		{
+			break;
+		}
+
+		RecvBuffer buffer(&recvQ, header.len);
+		//auto& buffer = *RecvBuffer::Alloc(&recvQ,header.len);
+
+		if constexpr (std::is_same_v<Header, NetHeader>)
+		{
+			recvQ.Decode(session._staticKey);
+
+			if (!recvQ.ChecksumValid())
+			{
+				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"Recv Invalid Checksum id : %d"
+				               , session.GetSessionId());
+				session.Close();
+				break;
+			}
+		}
+		loopCount++;
+		recvQ.Dequeue(sizeof(Header));
+		server.onRecvPacket(session, buffer);
+
+		ASSERT_CRASH(buffer.CanPopSize() == 0, "UnuseData");
+	}
+
+	if (loopCount > 0)
+	{
+		server.IncreaseRecvCount(loopCount);
+	}
+}
+
+template void Session::RecvHandler<NetHeader>(void* iocp);
+template void Session::RecvHandler<LANHeader>(void* iocp);

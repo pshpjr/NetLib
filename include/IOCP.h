@@ -20,9 +20,6 @@ class SingleThreadQ;
  */
 class IOCP : public IOCP_CLASS
 {
-    friend class RecvExecutable;
-    friend class ReleaseExecutable;
-    friend class PostSendExecutable;
     friend class Session;
     friend class Group;
     friend class GroupManager;

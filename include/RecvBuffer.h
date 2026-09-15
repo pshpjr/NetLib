@@ -4,7 +4,6 @@
 class RecvBuffer
 {
     //USE_TLS_POOL(RecvBuffer);
-    friend class RecvExecutable;
     friend class IOCP;
     friend class Group;
 

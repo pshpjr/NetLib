@@ -12,7 +12,7 @@
 #include "Logger.h"
 #include "CoreGlobal.h"
 #include "SendBufferImpl.h"
-#include "Executables.h"
+#include "Executable.h"
 #include "GroupManager.h"
 #include "IOCP.h"
 #include "LockFreeStack.h"
@@ -796,7 +796,7 @@ void IOCP::WorkerThread()
                     auto now = steady_clock::now();
                     auto recvWait = duration_cast<milliseconds>(now - session->lastRecv);
                     auto sendWait = session->_needCheckSendTimeout
-                                        ? duration_cast<milliseconds>(now - session->_postSendExecute.lastSend)
+                                        ? duration_cast<milliseconds>(now - session->_lastSend)
                                         : 0ms;
 
                     gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
@@ -836,7 +836,7 @@ void IOCP::WorkerThread()
                     auto now = steady_clock::now();
                     auto recvWait = duration_cast<milliseconds>(now - session->lastRecv);
                     auto sendWait = duration_cast<milliseconds>(
-                        now - session->_postSendExecute.lastSend);
+                        now - session->_lastSend);
                     __debugbreak();
                 }
             }

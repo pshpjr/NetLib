@@ -4,7 +4,7 @@
 
 #include "Logger.h"
 #include "RecvBuffer.h"
-#include "GroupExecutable.h"
+#include "Executable.h"
 #include "GroupManager.h"
 #include "IOCP.h"
 #include "Profiler.h"
@@ -15,7 +15,8 @@
 Group::Group()
 	: _iocp(nullptr), _groupLogger(std::make_unique<Logger>(
 		  L"GroupLogger", Logger::LogLevel::Debug)),
-	  _executable(std::make_unique<GroupExecutable>(this)),
+	  _executable(std::make_unique<Executable>(Executable::IoType::Group,
+		  [this](ULONG_PTR, DWORD, void*) { Update(); })),
 	  _prevUpdate(std::chrono::steady_clock::now()),
 	  _nextUpdate(_prevUpdate + std::chrono::milliseconds(_loopMs)),
 	  _jobs(std::make_unique<LockFreeFixedQueue<GroupJob, 8192>>()),

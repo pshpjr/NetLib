@@ -29,7 +29,6 @@ add_library(NetLib STATIC
         src/SendBufferImpl.cpp
         src/DBConnection.cpp
         src/Group.cpp
-        src/GroupExecutable.cpp
         src/GroupManager.cpp
         src/HardwareMonitor.cpp
         src/LockFreeStack.cpp
@@ -40,14 +39,10 @@ add_library(NetLib STATIC
         src/MultiThreadMemoryPool.cpp
         src/NormalIOCP.cpp
         src/NormalSocket.cpp
-        src/PostSendExecutable.cpp
         src/ProcessMonitor.cpp
-        src/RecvExecutable.cpp
         src/RedisConnection.cpp
-        src/ReleaseExecutable.cpp
         src/RUDPSocket.cpp
         src/SendBuffer.cpp
-        src/SendExecutable.cpp
         src/Session.cpp
         src/SettingParser.cpp
         src/SingleThreadObjectPool.cpp

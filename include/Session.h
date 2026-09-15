@@ -18,19 +18,12 @@
 class SendBufferImpl;
 class RecvBuffer;
 class IOCP;
+class Executable;
 
-class RecvExecutable;
-class SendExecutable;
-class PostSendExecutable;
-class ReleaseExecutable;
 
 //#define SESSION_DEBUG
 class Session
 {
-	friend class RecvExecutable;
-	friend class PostSendExecutable;
-	friend class SendExecutable;
-	friend class ReleaseExecutable;
 	friend class IOCP;
 	friend class Group;
 
@@ -100,6 +93,10 @@ private:
 	// Send
 	void RealSend();
 
+	// Receive
+	template <typename Header>
+	void RecvHandler(void* iocp);
+
 	// Timeout
 	std::optional<timeoutInfo> CheckTimeout(std::chrono::steady_clock::time_point now);
 
@@ -131,13 +128,14 @@ private:
 	//TlsLockFreeQueue<SendBufferImpl*> _sendQ;
 	SendBufferImpl* _sendingQ[MAX_SEND_COUNT];
 	std::atomic<bool> _isSending = false;
+	std::atomic<long> _dataNotSend = 0;
 
 	// IOCP dispatch
 	IOCP* _owner;
-	RecvExecutable& _recvExecute;
-	PostSendExecutable& _postSendExecute;
-	SendExecutable& _sendExecute;
-	ReleaseExecutable& _releaseExecutable;
+	Executable& _recvExecute;
+	Executable& _postSendExecute;
+	Executable& _sendExecute;
+	Executable& _releaseExecutable;
 
 	// Receive
 	RingBuffer _recvQ;
@@ -147,6 +145,7 @@ private:
 	int _defaultTimeout = 5000;
 	int _timeout = 5000;
 	std::chrono::steady_clock::time_point lastRecv;
+	std::chrono::steady_clock::time_point _lastSend{};
 
 	// Packet format
 	char _staticKey = false;

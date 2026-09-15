@@ -11,7 +11,7 @@
 class Session;
 class SendBuffer;
 class GroupManager;
-class GroupExecutable;
+class Executable;
 class RecvBuffer;
 class IOCP;
 
@@ -32,7 +32,6 @@ class Group
         DWORD transferred{0};
     };
 
-    friend class GroupExecutable;
     friend class GroupManager;
 
 public:
@@ -136,7 +135,7 @@ private:
 private:
     std::unique_ptr<Logger> _groupLogger;
     GroupID _groupId = GroupID::InvalidGroupID();
-    std::unique_ptr<GroupExecutable> _executable;
+    std::unique_ptr<Executable> _executable;
     std::chrono::steady_clock::time_point _prevUpdate;
     std::chrono::steady_clock::time_point _nextUpdate;
 

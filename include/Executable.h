@@ -1,11 +1,13 @@
-﻿#pragma once
+#pragma once
 #include <array>
+#include <functional>
 #include <string>
-#include <cstddef>
+#include <type_traits>
+#include <utility>
 #include <WinSock2.h>
 #include <Windows.h>
 
-class Executable
+class Executable final
 {
     inline static std::array ioTypeToStr = {
         std::wstring(L"BASE"),
@@ -20,39 +22,65 @@ class Executable
     class OverlappedIO
     {
     public:
-        OverlappedIO() {
+        explicit OverlappedIO(Executable* owner) : _owner(owner)
+        {
             Clear();
         }
 
-        void Clear() {
+        void Clear()
+        {
             memset(&_overlapped, 0, sizeof(_overlapped));
         }
 
-        LPOVERLAPPED Get() {
+        LPOVERLAPPED Get()
+        {
             return &_overlapped;
+        }
+
+        Executable* Owner() const
+        {
+            return _owner;
         }
 
     private:
         OVERLAPPED _overlapped;
+        Executable* _owner;
     };
 
+    static_assert(std::is_standard_layout_v<OverlappedIO>);
+
 public:
-    virtual void Execute(ULONG_PTR arg, DWORD transferred, void* iocp) = 0;
-    virtual ~Executable() = default;
+    using Callback = std::function<void(ULONG_PTR, DWORD, void*)>;
 
-     enum class IoType
-     {
-         Base = 0,
-         Send,
-         Recv,
-         Postrecv,
-         Release,
-         Group,
-         Custom
-     };
-
-    Executable(IoType type) : _type{type}
+    enum class IoType
     {
+        Base = 0,
+        Send,
+        Recv,
+        Postrecv,
+        Release,
+        Group,
+        Custom
+    };
+
+    explicit Executable(IoType type, Callback callback = {})
+        : _type{type}, _overlapped(this), _callback(std::move(callback))
+    {
+    }
+
+    Executable(const Executable&) = delete;
+    Executable(Executable&&) = delete;
+    Executable& operator=(const Executable&) = delete;
+    Executable& operator=(Executable&&) = delete;
+
+    void SetCallback(Callback callback)
+    {
+        _callback = std::move(callback);
+    }
+
+    void Execute(ULONG_PTR arg, DWORD transferred, void* iocp)
+    {
+        _callback(arg, transferred, iocp);
     }
 
     void Clear()
@@ -60,13 +88,14 @@ public:
         _overlapped.Clear();
     }
 
-    LPOVERLAPPED GetOverlapped() {
+    LPOVERLAPPED GetOverlapped()
+    {
         return _overlapped.Get();
     }
 
     static Executable* GetExecutable(OVERLAPPED* overlap)
     {
-        return (Executable*)((char*)overlap - offsetof(Executable, _overlapped));
+        return overlap ? reinterpret_cast<OverlappedIO*>(overlap)->Owner() : nullptr;
     }
 
     static const std::wstring& GetIoType(const Executable& executable)
@@ -76,6 +105,6 @@ public:
 
 private:
     IoType _type{IoType::Base};
-    OverlappedIO _overlapped{};
+    OverlappedIO _overlapped;
+    Callback _callback;
 };
-
