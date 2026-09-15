@@ -13,6 +13,7 @@
 #include "RecvBuffer.h"
 #include "Executables.h"
 
+// Construction
 Session::Session()
 	: _sessionId()
 	  , _socket({})
@@ -37,46 +38,100 @@ Session::Session(Socket socket, SessionID sessionId, IOCP& owner)
 {
 }
 
-bool Session::CanSend()
+// Identity
+SessionID Session::GetSessionId() const
 {
-	PRO_FUNCTION();
-	if (_connect == false)
-	{
-		return false;
-	}
-	while (true)
-	{
-		//이걸로 disconnect시 전송 을 방지할 수 있을까?
-		if (_refCount >= RELEASE_FLAG)
-		{
-			return false;
-		}
-
-		if (_sendQ.Size() == 0)
-		{
-			return false;
-		}
-
-		if (_isSending.exchange(true) == true)
-		{
-			return false;
-		}
-
-		if (_sendQ.Size() == 0)
-		{
-			_isSending.store(false);
-
-
-			continue;
-		}
-		break;
-	}
-	return true;
+	return _sessionId;
 }
 
-bool Session::EnqueueSendData(SendBufferImpl* buffer)
+void Session::SetSessionId(const SessionID sessionID)
 {
-	return _sendQ.Enqueue(buffer);
+	_sessionId = sessionID;
+}
+
+// Connection
+String Session::GetIp() const
+{
+	return _socket.GetIp();
+}
+
+psh::uint16 Session::GetPort() const
+{
+	return _socket.GetPort();
+}
+
+void Session::SetSocket(const Socket& socket)
+{
+	_socket = socket;
+}
+
+void Session::SetConnect()
+{
+	_connect = true;
+}
+
+void Session::Close()
+{
+	_connect.store(false);
+	_socket.CancelIO();
+}
+
+void Session::SetErr(const int errCode)
+{
+	_errCode = errCode;
+}
+
+int Session::GetErr()
+{
+	return _errCode;
+}
+
+// Lifetime
+void Session::Reset()
+{
+	//debugIndex = 0;
+	_sendExecute.Clear();
+	_recvExecute.Clear();
+	_postSendExecute.Clear();
+	_recvQ.Clear();
+	_isSending = false;
+	_needCheckSendTimeout = false;
+	_timeout = _defaultTimeout;
+	_errCode = -1;
+
+	//RecvBuffer* recvBuffer;
+	//while ( _groupRecvQ.Dequeue(recvBuffer) )
+	//{
+	//	recvBuffer->Release(L"ResetRecvRelease");
+	//}
+
+	SendBufferImpl* sendBuffer;
+	while (_sendQ.Dequeue(sendBuffer))
+	{
+		sendBuffer->Release(L"ResetSendRelease");
+	}
+	SetGroupID(GroupID(0));
+	_recvQ.Clear();
+
+	const int notSend = _postSendExecute.dataNotSend.exchange(0);
+
+	for (int i = 0; i < notSend; i++)
+	{
+		_sendingQ[i]->Release(L"ResetSendingRelease");
+		_sendingQ[i] = nullptr;
+	}
+
+	_socket.Close();
+}
+
+void Session::PostRelease()
+{
+#ifdef SESSION_DEBUG
+	ASSERT_CRASH(DebugRef == 0);
+	Write(-1, GroupID::InvalidGroupID(), L"PostRelease");
+#endif
+	PostQueuedCompletionStatus(_owner->_iocp, static_cast<DWORD>(-1), reinterpret_cast<ULONG_PTR>(this)
+	                           , _releaseExecutable.GetOverlapped());
 }
 
 bool Session::Release(psh::LPCWSTR content, int type)
@@ -119,12 +174,16 @@ bool Session::Release(psh::LPCWSTR content, int type)
 	return false;
 }
 
-void Session::Close()
+void Session::OffReleaseFlag()
 {
-	_connect.store(false);
-	_socket.CancelIO();
+	_refCount.fetch_and(~RELEASE_FLAG);
 }
 
+// Send
+bool Session::EnqueueSendData(SendBufferImpl* buffer)
+{
+	return _sendQ.Enqueue(buffer);
+}
 
 void Session::TrySend()
 {
@@ -136,7 +195,44 @@ void Session::TrySend()
 	RealSend();
 }
 
+bool Session::CanSend()
+{
+	PRO_FUNCTION();
+	if (_connect == false)
+	{
+		return false;
+	}
+	while (true)
+	{
+		//이걸로 disconnect시 전송 을 방지할 수 있을까?
+		if (_refCount >= RELEASE_FLAG)
+		{
+			return false;
+		}
 
+		if (_sendQ.Size() == 0)
+		{
+			return false;
+		}
+
+		if (_isSending.exchange(true) == true)
+		{
+			return false;
+		}
+
+		if (_sendQ.Size() == 0)
+		{
+			_isSending.store(false);
+
+
+			continue;
+		}
+		break;
+	}
+	return true;
+}
+
+// Receive
 void Session::RegisterRecv()
 {
 	++_refCount;
@@ -226,45 +322,10 @@ void Session::RecvNotIncrease()
 	}
 }
 
-
+// IOCP
 void Session::RegisterIOCP(const HANDLE iocpHandle)
 {
 	CreateIoCompletionPort(reinterpret_cast<HANDLE>(_socket._socket), iocpHandle, (ULONG_PTR)this, 0);
-}
-
-SessionID Session::GetSessionId() const
-{
-	return _sessionId;
-}
-
-String Session::GetIp() const
-{
-	return _socket.GetIp();
-}
-
-psh::uint16 Session::GetPort() const
-{
-	return _socket.GetPort();
-}
-
-void Session::SetSocket(const Socket& socket)
-{
-	_socket = socket;
-}
-
-void Session::SetSessionId(const SessionID sessionID)
-{
-	_sessionId = sessionID;
-}
-
-void Session::SetErr(const int errCode)
-{
-	_errCode = errCode;
-}
-
-int Session::GetErr()
-{
-	return _errCode;
 }
 
 void Session::SetOwner(IOCP& owner)
@@ -272,6 +333,25 @@ void Session::SetOwner(IOCP& owner)
 	_owner = &owner;
 }
 
+// Timeout
+void Session::SetDefaultTimeout(const int timeoutMillisecond)
+{
+	_defaultTimeout = timeoutMillisecond;
+}
+
+void Session::SetTimeout(const int timeoutMillisecond)
+{
+	_timeout = timeoutMillisecond;
+}
+
+void Session::ResetTimeoutWait()
+{
+	const auto now = std::chrono::steady_clock::now();
+	lastRecv = now;
+	_postSendExecute.lastSend = now;
+}
+
+// Packet format
 void Session::SetNetSession(const char staticKey)
 {
 	_staticKey = staticKey;
@@ -287,16 +367,7 @@ void Session::SetMaxPacketLen(const int size)
 	_maxPacketLen = size;
 }
 
-void Session::SetConnect()
-{
-	_connect = true;
-}
-
-void Session::OffReleaseFlag()
-{
-	_refCount.fetch_and(~RELEASE_FLAG);
-}
-
+// Group
 GroupID Session::GetGroupID() const
 {
 	return _groupId.load();
@@ -317,6 +388,7 @@ void Session::setRecvHandled(bool value)
 	_isHandled.store(value, std::memory_order::release);
 }
 
+// Lifetime
 long Session::GetRefCount(SessionID id)
 {
 	//auto value = _refCount;
@@ -325,118 +397,7 @@ long Session::GetRefCount(SessionID id)
 	return value;
 }
 
-void Session::WriteContentLog(unsigned int type)
-{
-#ifdef SESSION_DEBUG
-		Write(_refCount.load(), GroupID::InvalidGroupID(), L"SendContent");
-#else
-	UNREFERENCED_PARAMETER(type);
-#endif
-}
-
-void Session::SetDefaultTimeout(const int timeoutMillisecond)
-{
-	_defaultTimeout = timeoutMillisecond;
-}
-
-void Session::SetTimeout(const int timeoutMillisecond)
-{
-	_timeout = timeoutMillisecond;
-}
-
-void Session::ResetTimeoutWait()
-{
-	const auto now = std::chrono::steady_clock::now();
-	lastRecv = now;
-	_postSendExecute.lastSend = now;
-}
-
-
-std::optional<timeoutInfo> Session::CheckTimeout(const std::chrono::steady_clock::time_point now)
-{
-	using namespace std::chrono;
-
-	if (_timeout == 0)
-	{
-		return {};
-	}
-	if (_refCount >= RELEASE_FLAG)
-	{
-		return {};
-	}
-
-
-	if (IncreaseRef(L"timeoutInc") >= RELEASE_FLAG)
-	{
-		Release(L"TimeoutAlreadyRelease");
-		return {};
-	}
-
-	const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
-	const auto sendWait = duration_cast<milliseconds>(now - _postSendExecute.lastSend);
-
-	std::optional<timeoutInfo> retVal{};
-	if (_needCheckSendTimeout && sendWait.count() > _timeout)
-	{
-		retVal = {timeoutInfo::IOtype::send, sendWait.count(), _timeout};
-	}
-	else if (recvWait.count() > _timeout)
-	{
-		retVal = {timeoutInfo::IOtype::recv, recvWait.count(), _timeout};
-	}
-
-	Release(L"TimeoutRelease");
-	return retVal;
-}
-
-
-void Session::Reset()
-{
-	//debugIndex = 0;
-	_sendExecute.Clear();
-	_recvExecute.Clear();
-	_postSendExecute.Clear();
-	_recvQ.Clear();
-	_isSending = false;
-	_needCheckSendTimeout = false;
-	_timeout = _defaultTimeout;
-	_errCode = -1;
-
-	//RecvBuffer* recvBuffer;
-	//while ( _groupRecvQ.Dequeue(recvBuffer) )
-	//{
-	//	recvBuffer->Release(L"ResetRecvRelease");
-	//}
-
-	SendBufferImpl* sendBuffer;
-	while (_sendQ.Dequeue(sendBuffer))
-	{
-		sendBuffer->Release(L"ResetSendRelease");
-	}
-	SetGroupID(GroupID(0));
-	_recvQ.Clear();
-
-	const int notSend = _postSendExecute.dataNotSend.exchange(0);
-
-	for (int i = 0; i < notSend; i++)
-	{
-		_sendingQ[i]->Release(L"ResetSendingRelease");
-		_sendingQ[i] = nullptr;
-	}
-
-	_socket.Close();
-}
-
-void Session::PostRelease()
-{
-#ifdef SESSION_DEBUG
-	ASSERT_CRASH(DebugRef == 0);
-	Write(-1, GroupID::InvalidGroupID(), L"PostRelease");
-#endif
-	PostQueuedCompletionStatus(_owner->_iocp, static_cast<DWORD>(-1), reinterpret_cast<ULONG_PTR>(this)
-	                           , _releaseExecutable.GetOverlapped());
-}
-
+// Send
 void Session::RealSend()
 {
 	PRO_FUNCTION();
@@ -524,4 +485,52 @@ void Session::RealSend()
 		}
 		Release(L"SendErrorRelease");
 	}
+}
+
+// Timeout
+std::optional<timeoutInfo> Session::CheckTimeout(const std::chrono::steady_clock::time_point now)
+{
+	using namespace std::chrono;
+
+	if (_timeout == 0)
+	{
+		return {};
+	}
+	if (_refCount >= RELEASE_FLAG)
+	{
+		return {};
+	}
+
+
+	if (IncreaseRef(L"timeoutInc") >= RELEASE_FLAG)
+	{
+		Release(L"TimeoutAlreadyRelease");
+		return {};
+	}
+
+	const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
+	const auto sendWait = duration_cast<milliseconds>(now - _postSendExecute.lastSend);
+
+	std::optional<timeoutInfo> retVal{};
+	if (_needCheckSendTimeout && sendWait.count() > _timeout)
+	{
+		retVal = {timeoutInfo::IOtype::send, sendWait.count(), _timeout};
+	}
+	else if (recvWait.count() > _timeout)
+	{
+		retVal = {timeoutInfo::IOtype::recv, recvWait.count(), _timeout};
+	}
+
+	Release(L"TimeoutRelease");
+	return retVal;
+}
+
+// Debug
+void Session::WriteContentLog(unsigned int type)
+{
+#ifdef SESSION_DEBUG
+		Write(_refCount.load(), GroupID::InvalidGroupID(), L"SendContent");
+#else
+	UNREFERENCED_PARAMETER(type);
+#endif
 }

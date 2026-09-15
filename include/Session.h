@@ -2,6 +2,9 @@
 #include <atomic>
 #include <chrono>
 #include <LockFreeFixedQueue.h>
+#ifdef NETLIB_USE_SCQ_SEND_QUEUE
+#include "SCQ.h"
+#endif
 #include <optional>
 
 #include "RingBuffer.h"
@@ -32,137 +35,131 @@ class Session
 	friend class Group;
 
 public:
+	// Construction
 	Session();
 	Session(Socket socket, SessionID sessionId, IOCP& owner);
-
 	Session(const Session& other) = delete;
-
 	Session(Session&& other) noexcept = delete;
-
 	Session& operator=(const Session& other) = delete;
-
 	Session& operator=(Session&& other) noexcept = delete;
 
+	// Identity
+	SessionID GetSessionId() const;
+	void SetSessionId(const SessionID sessionID);
+
+	// Connection
+	String GetIp() const;
+	psh::uint16 GetPort() const;
+	void SetSocket(const Socket& socket);
+	void SetConnect();
 	void Close();
+	void SetErr(const int errCode);
+	int  GetErr();
+
+	// Lifetime
 	void Reset();
 	void PostRelease();
-
-
 	inline long IncreaseRef(psh::LPCWSTR content);
 	bool Release(psh::LPCWSTR content = L"", int type = 0);
+	void OffReleaseFlag();
 
-
+	// Send
 	bool EnqueueSendData(SendBufferImpl* buffer);
-	void RegisterRecv();
-	void RecvNotIncrease();
 	void TrySend();
 	bool CanSend();
 
+	// Receive
+	void RegisterRecv();
+	void RecvNotIncrease();
 
+	// IOCP
 	void RegisterIOCP(HANDLE iocpHandle);
-
-	SessionID GetSessionId() const;
-
-	String GetIp() const;
-
-	psh::uint16 GetPort() const;
-
-	void SetSocket(const Socket& socket);
-
-	void SetSessionId(const SessionID sessionID);
-
-	void SetErr(const int errCode);
-
-	int GetErr();
-
 	void SetOwner(IOCP& owner);
 
-	void SetNetSession(const char staticKey);
-
-	void SetLanSession();
-
-	void SetMaxPacketLen(const int size);
-
-	void SetConnect();
-
+	// Timeout
 	void SetDefaultTimeout(int timeoutMillisecond);
 	void SetTimeout(int timeoutMillisecond);
-
-	void OffReleaseFlag();
-
 	void ResetTimeoutWait();
 
+	// Packet format
+	void SetNetSession(const char staticKey);
+	void SetLanSession();
+	void SetMaxPacketLen(const int size);
+
+	// Group
 	//0이면 아무 그룹 아님.
 	GroupID GetGroupID() const;
-
 	void SetGroupID(const GroupID id);
-
 	bool recvHandleWaitInGroup();
 	void setRecvHandled(bool value);
 
 private:
-	std::optional<timeoutInfo> CheckTimeout(std::chrono::steady_clock::time_point now);
-	void RealSend();
-
-private:
+	// Lifetime
 	long GetRefCount(SessionID id);
 
-	//CONST
+	// Send
+	void RealSend();
+
+	// Timeout
+	std::optional<timeoutInfo> CheckTimeout(std::chrono::steady_clock::time_point now);
+
+private:
+	// Identity
 	static constexpr unsigned long long ID_MASK = 0x000'7FFF'FFFF'FFFF;
 	static constexpr unsigned long long INDEX_MASK = 0x7FFF'8000'0000'0000;
-	static constexpr int MAX_SEND_COUNT = 512;
-
-	static constexpr long RELEASE_FLAG = 0x0010'0000;
-
-
-	//Network
 	alignas(64) SessionID _sessionId = {{0}};
+
+	// Connection
 	Socket _socket;
-	std::atomic<GroupID> _groupId = GroupID(0);
-	std::atomic<long> _refCount = RELEASE_FLAG;
+	std::atomic_bool _connect = false;
 	volatile int _errCode = -1;
 
+	// Lifetime
+	static constexpr long RELEASE_FLAG = 0x0010'0000;
+	std::atomic<long> _refCount = RELEASE_FLAG;
 #ifdef SESSION_DEBUG
 	long DebugRef = 0;
 #endif
-	std::atomic_bool _connect = false;
 
+	// Send
+	static constexpr int MAX_SEND_COUNT = 512;
+#ifdef NETLIB_USE_SCQ_SEND_QUEUE
+	SCQ<SendBufferImpl*, MAX_SEND_COUNT> _sendQ{};
+#else
 	LockFreeFixedQueue<SendBufferImpl*, MAX_SEND_COUNT> _sendQ{};
+#endif
 	//TlsLockFreeQueue<SendBufferImpl*> _sendQ;
 	SendBufferImpl* _sendingQ[MAX_SEND_COUNT];
+	std::atomic<bool> _isSending = false;
 
+	// IOCP dispatch
 	IOCP* _owner;
-
-
-	//Executable
 	RecvExecutable& _recvExecute;
 	PostSendExecutable& _postSendExecute;
 	SendExecutable& _sendExecute;
 	ReleaseExecutable& _releaseExecutable;
 
+	// Receive
+	RingBuffer _recvQ;
 
-	//Reference
-
-	std::atomic<bool> _isSending = false;
-
-	//Timeout
+	// Timeout
 	bool _needCheckSendTimeout = false;
-
 	int _defaultTimeout = 5000;
 	int _timeout = 5000;
-	RingBuffer _recvQ;
 	std::chrono::steady_clock::time_point lastRecv;
 
-	//Encrypt
+	// Packet format
 	char _staticKey = false;
 	unsigned int _maxPacketLen = 5000;
-	volatile std::atomic<int> _uniqueAccess;
-	//DEBUG
-	long debugCount = 0;
 
+	// Group
+	std::atomic<GroupID> _groupId = GroupID(0);
 	std::atomic_bool _isHandled = false;
-#ifdef SESSION_DEBUG
 
+	// Debug
+	volatile std::atomic<int> _uniqueAccess;
+	long debugCount = 0;
+#ifdef SESSION_DEBUG
 	struct RelastinReleaseEncrypt_D
 	{
 		SessionID id;
@@ -172,10 +169,8 @@ private:
 		GroupID groupId = GroupID::InvalidGroupID();
 	};
 	static const int debugSize = 2000;
-
 	std::atomic<long> debugIndex = 0;
 	RelastinReleaseEncrypt_D release_D[debugSize];
-
 	//세션 id, 종류
 	//tuple<SessionID, String, thread::id> _debugLeave[debugSize];
 	public:
@@ -184,10 +179,7 @@ private:
 		auto index = ++debugIndex;
 		release_D[index % debugSize] = { GetSessionId(),dst,refCount, cause,GetGroupID()};
 	}
-
 #endif
-
-
 	void WriteContentLog(unsigned int type);
 };
 
