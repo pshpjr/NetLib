@@ -1,19 +1,14 @@
-﻿#pragma once
-#include <optional>
-
-#include <vector>
-
+#pragma once
 #include "SettingParser.h"
 #include "SocketTypes.h"
 
+#include <optional>
+#include <vector>
+
 class SubnetManager
 {
-    struct SubnetInfo
-    {
-        char subnetSize;
-        IN_ADDR address;
-        String addressStr;
-    };
+    // netlib-order: prerequisite - public return type needs a private forward declaration.
+    struct SubnetInfo;
 
 public:
     SubnetManager();
@@ -31,8 +26,13 @@ public:
         }
         return FindSubnet(_wanSubnet, info);
     }
-
 private:
+    struct SubnetInfo
+    {
+        char subnetSize;
+        IN_ADDR address;
+        String addressStr;
+    };
     std::optional<SubnetInfo> FindSubnet(Vector<SubnetInfo>& group, SockAddr_in info);
 
     void LoadSubnets();

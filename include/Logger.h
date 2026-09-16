@@ -1,11 +1,12 @@
 #pragma once
 
+#include "Types.h"
+
 #include <fmt/printf.h>
 #include <fmt/xchar.h>
+
 #include <thread>
 #include <type_traits>
-
-#include "Types.h"
 //TODO: 멀티스레드에서 안전하게 동작하도록 수정.
 
 

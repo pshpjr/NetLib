@@ -14,12 +14,7 @@ namespace psh
     template <typename Data, int DataId, bool UsePlacement = false>
     class CMemoryPool
     {
-        struct Node
-        {
-            Node* head = nullptr;
-            Data data;
-            Node* tail = nullptr;
-        };
+        static constexpr int IDENTIFIER = DataId << 16;
 
     public:
         explicit CMemoryPool(int iBlockNum);
@@ -41,12 +36,16 @@ namespace psh
         {
             return _objectCount;
         }
-
     private:
+        struct Node
+        {
+            Node* head = nullptr;
+            Data data;
+            Node* tail = nullptr;
+        };
         Node* _pFreeNode = nullptr;
         int _objectCount = 0;
         int _allocCount = 0;
-        static constexpr int IDENTIFIER = DataId << 16;
         static int _instanceCount;
     };
 

@@ -1,10 +1,11 @@
-﻿#pragma once
+#pragma once
+#include "LockFreeStack.h"
+#include "SingleThreadObjectPool.h"
+#include "Utility.h"
+
 #include <atomic>
 #include <list>
 #include <mutex>
-#include "SingleThreadObjectPool.h"
-#include "LockFreeStack.h"
-#include "Utility.h"
 
 constexpr int TLS_POOL_INITIAL_SIZE = 5'000;
 constexpr int GLOBAL_POOL_MULTIPLIER = 10;
@@ -20,14 +21,6 @@ class TlsPool
     using Node = typename poolType::Node;
 
 public:
-    int AllocatedCount() const
-    {
-        return (_acquireCount.load() - _releaseCount.load()) * _localPoolSize;
-    }
-
-    std::list<Node*> allocated;
-
-
     struct controlData
     {
         Node* front;
@@ -48,6 +41,13 @@ public:
             _nextBucket.Push(MakeControl());
         }
     }
+
+    int AllocatedCount() const
+    {
+        return (_acquireCount.load() - _releaseCount.load()) * _localPoolSize;
+    }
+
+
 
     int GetGPoolSize() const
     {
@@ -207,7 +207,21 @@ public:
         return data;
     }
 
+    std::list<Node*> allocated;
+
 private:
+#ifdef TLS_DEBUG
+	struct Debug
+	{
+		int threadID;
+		int type;
+		int globalPoolSize;
+		long long globalPoolAddr;
+		int localPoolSize;
+		long long localPoolAddr;
+	};
+#endif
+
     LockFreeStack<controlData> _nextBucket;
 
     inline static psh::util::TlsKey _localPoolTlsIndex = 0;
@@ -223,15 +237,7 @@ private:
 
     std::atomic<unsigned int> _poolEmptyCount = 0;
 #ifdef TLS_DEBUG
-	struct Debug
-	{
-		int threadID;
-		int type;
-		int globalPoolSize;
-		long long globalPoolAddr;
-		int localPoolSize;
-		long long localPoolAddr;
-	};
+
 	long debugIndex = 0;
 	Debug debug[1000];
 

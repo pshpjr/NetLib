@@ -1,8 +1,9 @@
 #pragma once
+#include "Protocol.h"
+#include "TLSPool.h"
+
 #include <mutex>
 #include <stdexcept>
-#include "TLSPool.h"
-#include "Protocol.h"
 
 //#define SEND_DEBUG
 
@@ -10,6 +11,14 @@ struct NetHeader;
 
 class SendBufferImpl final
 {
+    enum bufferOption { BUFFER_SIZE = 2048 };
+    static constexpr int SERIAL_INIT_SIZE = 500;
+    static constexpr int SERIAL_INIT_MULTIPLIER = 20;
+
+#ifdef SEND_DEBUG
+	static const int debugSize = 1000;
+#endif
+
     USE_TLS_POOL(SendBufferImpl)
 
     friend class IOCP;
@@ -17,6 +26,14 @@ class SendBufferImpl final
     friend class Session;
 
 public:
+    SendBufferImpl(const SendBufferImpl& other) = delete;
+
+    SendBufferImpl(SendBufferImpl&& other) noexcept = delete;
+
+    SendBufferImpl& operator=(const SendBufferImpl& other) = delete;
+
+    SendBufferImpl& operator=(SendBufferImpl&& other) noexcept = delete;
+
      psh::int64 GetPoolAllocatedSize()
     {
         return _pool.AllocatedCount();
@@ -87,21 +104,23 @@ public:
 
 
 
-    SendBufferImpl(const SendBufferImpl& other) = delete;
-
-    SendBufferImpl(SendBufferImpl&& other) noexcept = delete;
-
-    SendBufferImpl& operator=(const SendBufferImpl& other) = delete;
-
-    SendBufferImpl& operator=(SendBufferImpl&& other) noexcept = delete;
 private:
+
+#ifdef SEND_DEBUG
+	struct RelastinReleaseEncrypt_D
+	{
+		long refCount;
+		psh::LPCWSTR location;
+		long long contentType;
+	};
+
+#endif
 
     SendBufferImpl();
     ~SendBufferImpl() = default;
 
 
 
-private:
     bool CopyData(SendBufferImpl& dst) const;
 
     void Clear()
@@ -162,9 +181,7 @@ private:
     void TryEncode(char staticKey);
     void Encode(char staticKey);
 
-private:
     long _refCount = 0;
-    enum bufferOption { BUFFER_SIZE = 2048 };
 
 
     char _buffer[BUFFER_SIZE + sizeof(NetHeader)];
@@ -180,19 +197,10 @@ private:
 
     std::mutex _encodeLock;
 
-    static constexpr int SERIAL_INIT_SIZE = 500;
-    static constexpr int SERIAL_INIT_MULTIPLIER = 20;
 
     //DEBUG
 #ifdef SEND_DEBUG
 
-	struct RelastinReleaseEncrypt_D
-	{
-		long refCount;
-		psh::LPCWSTR location;
-		long long contentType;
-	};
-	static const int debugSize = 1000;
 
 	long debugIndex = 0;
 	RelastinReleaseEncrypt_D release_D[debugSize];

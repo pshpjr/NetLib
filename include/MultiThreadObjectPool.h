@@ -1,29 +1,17 @@
 ﻿#pragma once
+#include "LockFreeData.h"
+
 #include <atomic>
-#include <cstdlib>
 #include <concepts>
 #include <memory>
-#include "LockFreeData.h"
+
+#include <cstdlib>
 
 template <typename T, bool UsePlacement = false>
 requires (UsePlacement || std::default_initializable<T>)
 class MultiThreadObjectPool
 {
     using storageType = std::aligned_storage_t<sizeof(T),alignof(T)>;
-    struct Node
-    {
-        Node* head{nullptr};
-        storageType data{};
-        Node* next{nullptr};
-
-        Node() = default;
-
-        explicit Node(const T& data) : head(nullptr)
-                                     , data(data)
-                                     , next(nullptr)
-        {
-        }
-    };
 
 public:
     template <typename ...Args>
@@ -115,8 +103,22 @@ public:
             }
         }
     }
-
 private:
+    struct Node
+    {
+    public:
+
+        Node() = default;
+
+        explicit Node(const T& data) : head(nullptr)
+                                     , data(data)
+                                     , next(nullptr)
+        {
+        }
+        Node* head{nullptr};
+        storageType data{};
+        Node* next{nullptr};
+    };
     template <typename ...Args>
     requires (UsePlacement || sizeof...(Args) == 0)
     Node* createNode(Args... args)
@@ -128,9 +130,6 @@ private:
         }
         return node;
     }
-
-
-private:
     std::atomic<Node*> _top{nullptr};
 
     short topCount = 0;

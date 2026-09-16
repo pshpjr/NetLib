@@ -4,11 +4,12 @@
 
 #ifndef UTILITY_H
 #define UTILITY_H
-#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <variant>
+
+#include <cstdint>
 
 #ifndef _WIN32
 #include <pthread.h>

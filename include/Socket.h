@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include "BuildOption.h"
-#include "Types.h"
 #include "SocketTypes.h"
+#include "Types.h"
 #include SOCKET_HEADER
 
 class Address;

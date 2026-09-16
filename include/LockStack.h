@@ -4,19 +4,6 @@
 template <typename T>
 class LockStack
 {
-    struct Node
-    {
-        Node* next = nullptr;
-        T data = 0;
-        Node() = default;
-
-        Node(const T& data)
-            : next(nullptr)
-            , data(data)
-        {
-        }
-    };
-
 public:
     void Push(const T& data)
     {
@@ -42,8 +29,20 @@ public:
         delete t;
         return ret;
     }
-
 private:
+    struct Node
+    {
+    public:
+        Node() = default;
+
+        Node(const T& data)
+            : next(nullptr)
+            , data(data)
+        {
+        }
+        Node* next = nullptr;
+        T data = 0;
+    };
     Node* _top = nullptr;
     int _pooledNodeCount = 0;
     std::mutex _cs;

@@ -1,7 +1,8 @@
 ﻿#pragma once
 
-#include <atomic>
 #include "MyWindows.h"
+
+#include <atomic>
 
 class CrashDump
 {

@@ -1,14 +1,11 @@
 #pragma once
-#include "Types.h"
 #include "Container.h"
+#include "Types.h"
 
 class RingBuffer
 {
-    //버퍼 사이즈는 2의 N승꼴
     static constexpr auto BUFFER_SIZE = 8192;
     static constexpr auto INDEX_MASK = BUFFER_SIZE - 1;
-
-    static_assert((BUFFER_SIZE & BUFFER_SIZE - 1) == 0);
 
 public:
     /**
@@ -120,8 +117,10 @@ public:
     {
         return num & INDEX_MASK;
     }
-
 private:
+    //버퍼 사이즈는 2의 N승꼴
+
+    static_assert((BUFFER_SIZE & BUFFER_SIZE - 1) == 0);
     std::array<char, BUFFER_SIZE> _buffer = {};
 
     /**

@@ -1,7 +1,7 @@
 ﻿#pragma once
-#include <optional>
-
 #include "Types.h"
+
+#include <optional>
 class RedisConnection
 {
 public:

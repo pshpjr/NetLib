@@ -1,19 +1,15 @@
 ﻿#pragma once
 
-#include <curl/curl.h>
+#include <Types.h>
 
+#include <curl/curl.h>
 
 #include <format>
 #include <string>
-#include <Types.h>
 
 class WebHook
 {
 public:
-    WebHook(const WebHook& other) = delete;
-    WebHook(WebHook&& other) = delete;
-    WebHook& operator=(const WebHook& other) = delete;
-    WebHook& operator=(WebHook&& other) = delete;
 
     explicit WebHook(const String& url)
         : _curl(curl_easy_init())
@@ -27,6 +23,10 @@ public:
     {
         curl_easy_cleanup(_curl);
     }
+    WebHook(const WebHook& other) = delete;
+    WebHook(WebHook&& other) = delete;
+    WebHook& operator=(const WebHook& other) = delete;
+    WebHook& operator=(WebHook&& other) = delete;
 
     bool Send(String title, String description)
     {
@@ -61,7 +61,6 @@ public:
         curl_slist_free_all(headers);
         return true;
     }
-
 private:
     CURL* _curl;
     CURLcode _res;

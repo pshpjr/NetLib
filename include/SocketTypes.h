@@ -4,8 +4,8 @@
 
 #ifndef SOCKETTYPES_H
 #define SOCKETTYPES_H
-#include "Types.h"
 #include "MyWindows.h"
+#include "Types.h"
 
 //소켓 관련
 using Port = psh::uint16;

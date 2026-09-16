@@ -1,10 +1,10 @@
 #pragma once
-#include <algorithm>
-#include <optional>
-
-#include "Types.h"
 #include "Container.h"
 #include "Macro.h"
+#include "Types.h"
+
+#include <algorithm>
+#include <optional>
 
 /*
 	파일 형식은 TOML이다.
@@ -16,8 +16,9 @@
 
 class SettingParser
 {
+    static constexpr int MAX_WORD_SIZE = 100;
+
 public:
-    SettingParser() = default;
 
     enum class ErrType
     {
@@ -27,6 +28,13 @@ public:
         , OpErr
         ,
     };
+    SettingParser() = default;
+
+    //void GetValue(const String name, OUT LPWSTR value);
+    //void GetValue(const String name, OUT String& value);
+    //void GetValue(const String name, OUT std::string& value);
+
+    ~SettingParser() = default;
 
     void Init(psh::LPCWSTR location = L"serverSetting.toml");
 
@@ -71,18 +79,8 @@ public:
             static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>, "Unsupported type");
         }
     }
-
-    //void GetValue(const String name, OUT LPWSTR value);
-    //void GetValue(const String name, OUT String& value);
-    //void GetValue(const String name, OUT std::string& value);
-
-    ~SettingParser() = default;
-
 private:
     std::optional<String> GetValueImpl(const String& name) const;
     void LoadSetting(psh::LPCWSTR location);
-
-private:
-    static constexpr int MAX_WORD_SIZE = 100;
     HashMap<String, String> _settings;
 };

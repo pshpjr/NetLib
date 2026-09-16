@@ -7,10 +7,11 @@ class LockPool
 public:
 	struct Node
 	{
-		T _data;
-		Node* next;
+	public:
 		Node() :next(nullptr) {}
 		Node(const T& data) :next(nullptr), _data(data) {}
+		T _data;
+		Node* next;
 	};
 
 	LockPool(int iBlockNum)

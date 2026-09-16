@@ -1,7 +1,8 @@
 ﻿#pragma once
-#include <new.h>
 #include "Macro.h"
+
 #include <cstddef>
+#include <new.h>
 class Node;
 
 template <typename Data, int DataId, bool UsePlacement>
@@ -17,8 +18,9 @@ class TlsPool;
 template <typename T, int typeId, bool usePlacement = false>
 class SingleThreadObjectPool
 {
-    friend class TlsPool<T, typeId, usePlacement>;
+    static constexpr int _identifier = typeId << 16;
 
+    friend class TlsPool<T, typeId, usePlacement>;
 public:
     struct Node
     {
@@ -80,12 +82,10 @@ public:
             size++;
         }
     }
-
 private:
     alignas( 64 ) Node* _top = nullptr;
     int _objectCount = 0;
     int _allocCount = 0;
-    static constexpr int _identifier = typeId << 16;
     static int _instanceCount;
 };
 

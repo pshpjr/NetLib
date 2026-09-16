@@ -1,14 +1,13 @@
 #pragma once
-#include <memory>
-#include <thread>
-#include <atomic>
-#include <optional>
-#include <vector>
-
-
-#include "SessionTypes.h"
 #include "LockFreeStack.h"
 #include "Session.h"
+#include "SessionTypes.h"
+
+#include <atomic>
+#include <memory>
+#include <optional>
+#include <thread>
+#include <vector>
 
 class GroupManager;
 class MemoryUsage;
@@ -64,7 +63,6 @@ public:
     {
         return KernelTime() + UserTime();
     }
-
 private:
     ULARGE_INTEGER FileTimeToLargeInteger(const FILETIME& ft)
     {
@@ -73,8 +71,6 @@ private:
         ul.LowPart = ft.dwLowDateTime;
         return ul;
     }
-
-private:
     HANDLE _hThread;
     ULONGLONG _lastKernelTime = 0;
     ULONGLONG _lastUserTime = 0;
@@ -85,14 +81,20 @@ private:
 
 class NormalIOCP
 {
+protected:
+    static constexpr int MAX_SESSIONS = 15000;
+    static constexpr long releaseFlag = 0x0010'0000;
+
 public:
     NormalIOCP(const NormalIOCP& other) = delete;
     NormalIOCP(NormalIOCP&& other) = delete;
     NormalIOCP& operator=(const NormalIOCP& other) = delete;
     NormalIOCP& operator=(NormalIOCP&& other) = delete;
-
 protected:
     NormalIOCP();
+
+
+    virtual ~NormalIOCP();
 
     inline std::optional<Session*> findSession(SessionID id, psh::LPCWSTR content = L"");
 
@@ -102,13 +104,6 @@ protected:
 
     static inline void ProcessBuffer(Session& session, SendBufferImpl& buffer);
     void WaitStart();
-
-protected:
-    static constexpr int MAX_SESSIONS = 15000;
-    static constexpr long releaseFlag = 0x0010'0000;
-
-
-    virtual ~NormalIOCP();
 
 
     /*

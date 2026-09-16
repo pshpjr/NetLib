@@ -4,8 +4,9 @@
 
 #ifndef MULTITHREADOBJECTPOOLTEST_H
 #define MULTITHREADOBJECTPOOLTEST_H
-#include <gtest/gtest.h>
 #include "MultiThreadObjectPool.h"
+
+#include <gtest/gtest.h>
 
 TEST(MultiThreadObjectPool, Init)
 {

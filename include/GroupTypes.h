@@ -4,8 +4,9 @@
 
 #ifndef GROUPTYPES_H
 #define GROUPTYPES_H
-#include <atomic>
 #include "Types.h"
+
+#include <atomic>
 
 class GroupID
 {

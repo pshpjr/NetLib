@@ -1,18 +1,15 @@
 ﻿#pragma once
-#include <type_traits>
 #include "Container.h"
+
+#include <type_traits>
 template <typename T, int N>
 
 class PointerBuffer
 {
-    static_assert(std::is_pointer_v<T>, "T must be a pointer type");
-    static_assert((N & N - 1) == 0, "N must be a power of 2");
-
-    Array<T, N> _buffer;
-    std::size_t _frontIndex = 0;
-    std::size_t _rearIndex = 0;
     static const int INDEX_MASK = N - 1;
 
+    static_assert(std::is_pointer_v<T>, "T must be a pointer type");
+    static_assert((N & N - 1) == 0, "N must be a power of 2");
 public:
     void Enqueue(T value)
     {
@@ -54,4 +51,9 @@ public:
 
         return (_frontIndex & INDEX_MASK) - (_rearIndex & INDEX_MASK);
     }
+private:
+
+    Array<T, N> _buffer;
+    std::size_t _frontIndex = 0;
+    std::size_t _rearIndex = 0;
 };

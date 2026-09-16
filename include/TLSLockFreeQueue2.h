@@ -1,9 +1,10 @@
 ﻿#pragma once
-#include <mutex>
-#include <shared_mutex>
 #include "Container.h"
 #include "Utility.h"
 #include <TLSLockFreeQueue.h>
+
+#include <mutex>
+#include <shared_mutex>
 
 template <typename T>
 class TLSLockFreeQueue2

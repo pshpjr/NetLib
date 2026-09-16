@@ -1,19 +1,20 @@
 #pragma once
+#include <LockFreeFixedQueue.h>
+
 #include <atomic>
 #include <chrono>
-#include <LockFreeFixedQueue.h>
 #ifdef NETLIB_USE_SCQ_SEND_QUEUE
 #include "SCQ.h"
 #endif
-#include <optional>
-
-#include "RingBuffer.h"
 #include "GroupTypes.h"
 #include "LockQueue.h"
 #include "Macro.h"
+#include "RingBuffer.h"
 #include "SessionTypes.h"
 #include "Socket.h"
 #include "Types.h"
+
+#include <optional>
 
 class SendBufferImpl;
 class RecvBuffer;
@@ -24,6 +25,15 @@ class Executable;
 //#define SESSION_DEBUG
 class Session
 {
+	static constexpr unsigned long long ID_MASK = 0x000'7FFF'FFFF'FFFF;
+	static constexpr unsigned long long INDEX_MASK = 0x7FFF'8000'0000'0000;
+	static constexpr long RELEASE_FLAG = 0x0010'0000;
+	static constexpr int MAX_SEND_COUNT = 512;
+
+#ifdef SESSION_DEBUG
+	static const int debugSize = 2000;
+#endif
+
 	friend class IOCP;
 	friend class Group;
 
@@ -86,7 +96,28 @@ public:
 	bool recvHandleWaitInGroup();
 	void setRecvHandled(bool value);
 
+#ifdef SESSION_DEBUG
+	void Write(long refCount, GroupID dst, psh::LPCWSTR cause)
+	{
+		auto index = ++debugIndex;
+		release_D[index % debugSize] = { GetSessionId(),dst,refCount, cause,GetGroupID()};
+	}
+	void WriteContentLog(unsigned int type);
+#endif
+
 private:
+
+#ifdef SESSION_DEBUG
+	struct RelastinReleaseEncrypt_D
+	{
+		SessionID id;
+		GroupID dst = GroupID::InvalidGroupID();
+		long refCount;
+		psh::LPCWSTR location;
+		GroupID groupId = GroupID::InvalidGroupID();
+	};
+#endif
+
 	// Lifetime
 	long GetRefCount(SessionID id);
 
@@ -100,10 +131,11 @@ private:
 	// Timeout
 	std::optional<timeoutInfo> CheckTimeout(std::chrono::steady_clock::time_point now);
 
-private:
+#ifndef SESSION_DEBUG
+	void WriteContentLog(unsigned int type);
+#endif
+
 	// Identity
-	static constexpr unsigned long long ID_MASK = 0x000'7FFF'FFFF'FFFF;
-	static constexpr unsigned long long INDEX_MASK = 0x7FFF'8000'0000'0000;
 	alignas(64) SessionID _sessionId = {{0}};
 
 	// Connection
@@ -112,14 +144,12 @@ private:
 	volatile int _errCode = -1;
 
 	// Lifetime
-	static constexpr long RELEASE_FLAG = 0x0010'0000;
 	std::atomic<long> _refCount = RELEASE_FLAG;
 #ifdef SESSION_DEBUG
 	long DebugRef = 0;
 #endif
 
 	// Send
-	static constexpr int MAX_SEND_COUNT = 512;
 #ifdef NETLIB_USE_SCQ_SEND_QUEUE
 	SCQ<SendBufferImpl*, MAX_SEND_COUNT> _sendQ{};
 #else
@@ -159,27 +189,13 @@ private:
 	volatile std::atomic<int> _uniqueAccess;
 	long debugCount = 0;
 #ifdef SESSION_DEBUG
-	struct RelastinReleaseEncrypt_D
-	{
-		SessionID id;
-		GroupID dst = GroupID::InvalidGroupID();
-		long refCount;
-		psh::LPCWSTR location;
-		GroupID groupId = GroupID::InvalidGroupID();
-	};
-	static const int debugSize = 2000;
+
 	std::atomic<long> debugIndex = 0;
 	RelastinReleaseEncrypt_D release_D[debugSize];
 	//세션 id, 종류
 	//tuple<SessionID, String, thread::id> _debugLeave[debugSize];
-	public:
-	void Write(long refCount, GroupID dst, psh::LPCWSTR cause)
-	{
-		auto index = ++debugIndex;
-		release_D[index % debugSize] = { GetSessionId(),dst,refCount, cause,GetGroupID()};
-	}
+
 #endif
-	void WriteContentLog(unsigned int type);
 };
 
 

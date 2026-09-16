@@ -1,16 +1,18 @@
 #pragma once
-#include <chrono>
-#include <fmt/printf.h>
 #include "Types.h"
+
+#include <fmt/printf.h>
+
+#include <chrono>
 
 class DBConnection
 {
 public:
     DBConnection(psh::LPCSTR ip, psh::uint32 port, psh::LPCSTR id, psh::LPCSTR pass, psh::LPCSTR db);
 
-    static void LibInit();
-
     ~DBConnection();
+
+    static void LibInit();
 
     template <typename... Args>
     std::chrono::microseconds QueryFormat(std::string_view query, Args&&... args);
@@ -42,11 +44,10 @@ public:
     void Close();
 
     void SetReconnect(bool useReconnect);
-
 private:
-    std::chrono::microseconds ExecuteQuery(const std::string& queryString);
 
     struct Imple;
+    std::chrono::microseconds ExecuteQuery(const std::string& queryString);
     std::unique_ptr<Imple> pImple;
 };
 

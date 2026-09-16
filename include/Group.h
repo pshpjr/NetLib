@@ -1,12 +1,11 @@
 #pragma once
+#include "GroupTypes.h"
+#include "LockFreeFixedQueue.h"
+#include "Logger.h"
+#include "SessionTypes.h"
+
 #include <atomic>
 #include <chrono>
-
-#include "Logger.h"
-#include "GroupTypes.h"
-
-#include "LockFreeFixedQueue.h"
-#include "SessionTypes.h"
 
 class Session;
 class SendBuffer;
@@ -21,19 +20,8 @@ class IOCP;
 /// </summary>
 class Group
 {
-    struct GroupJob
-    {
-        enum type { Recv, Enter, Move, Leave };
-
-        type type{};
-        SessionID sessionId{};
-        int errCode = -1;
-        GroupID dst = GroupID(0);
-        DWORD transferred{0};
-    };
 
     friend class GroupManager;
-
 public:
     Group();
     virtual ~Group();
@@ -95,7 +83,6 @@ public:
     //	debugArr[id.index].arr[index].cause = cause;
 
     //}
-
 protected:
     void MoveSession(SessionID id, GroupID dst) const;
     void LeaveSession(SessionID id, bool update, int wsaErrCode);
@@ -103,9 +90,6 @@ protected:
     void SetLoopMs(int loopMS);
 
     [[nodiscard]] size_t Sessions() const;
-
-    IOCP* _iocp;
-    int _loopMs = 10;
 
     [[nodiscard]] psh::int64 GetWorkTime() const;
 
@@ -117,7 +101,19 @@ protected:
 
     [[nodiscard]] psh::int32 GetLeaveTps() const;
 
+    IOCP* _iocp;
+    int _loopMs = 10;
 private:
+    struct GroupJob
+    {
+        enum type { Recv, Enter, Move, Leave };
+
+        type type{};
+        SessionID sessionId{};
+        int errCode = -1;
+        GroupID dst = GroupID(0);
+        DWORD transferred{0};
+    };
     bool Enqueue(GroupJob job, bool update = true);
 
     bool NeedUpdate();
@@ -131,8 +127,6 @@ private:
     void RecvHandler(Session& session, void* iocp, DWORD transferred);
 
     void onRecvPacket(const Session& session, RecvBuffer& buffer);
-
-private:
     std::unique_ptr<Logger> _groupLogger;
     GroupID _groupId = GroupID::InvalidGroupID();
     std::unique_ptr<Executable> _executable;

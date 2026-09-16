@@ -1,6 +1,7 @@
 ﻿#pragma once
-#include <memory>
 #include "SpinLock.h"
+
+#include <memory>
 
 template <typename T, bool usePlacement = false>
 class SpinLockPool
@@ -9,10 +10,11 @@ public:
 
 	struct Node
 	{
-		T _data;
-		Node* next;
+	public:
 		Node() :next(nullptr) {}
 		Node(const T& data) :next(nullptr), _data(data) {}
+		T _data;
+		Node* next;
 	};
 
 	SpinLockPool(int iBlockNum)

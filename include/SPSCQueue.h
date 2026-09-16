@@ -9,24 +9,18 @@ template <typename T, int BufferSize>
 class SPSCQueue
 {
     static_assert((BufferSize & (BufferSize - 1)) == 0, "BufferSize must be a power of 2");
-
-    struct Node
-    {
-        T data = T();
-    };
-
 public:
     constexpr SPSCQueue()
         : indexMask(BufferSize - 1)
         , buffer(BufferSize) {}
+
+    ~SPSCQueue() = default;
 
     SPSCQueue(const SPSCQueue& other) = delete;
     SPSCQueue(SPSCQueue&& other) = delete;
 
     SPSCQueue& operator=(const SPSCQueue& other) = delete;
     SPSCQueue& operator=(SPSCQueue&& other) = delete;
-
-    ~SPSCQueue() = default;
 
 
     int Size() const
@@ -73,8 +67,12 @@ public:
 
         return true;
     }
-
 private:
+
+    struct Node
+    {
+        T data = T();
+    };
     uint64_t headIndex = 0;
     uint64_t tailIndex = 0;
     const int indexMask;

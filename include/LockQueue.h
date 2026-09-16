@@ -7,23 +7,20 @@
 #pragma once
 #include <array>
 #include <mutex>
-#include <cassert>
 #include <type_traits>
 #include <utility>
+
+#include <cassert>
 
 // LockBasedFixedQueue: 락을 사용하여 구현된 고정 크기 큐
 template <typename T, int BufferSize>
 class LockBasedFixedQueue
 {
     static_assert((BufferSize & (BufferSize - 1)) == 0, "BufferSize must be a power of two");
-
-    struct Node
-    {
-        T data;
-    };
-
 public:
     LockBasedFixedQueue() = default;
+
+    ~LockBasedFixedQueue() = default;
 
     // 복사 및 이동 생성자/할당 연산자 삭제
     LockBasedFixedQueue(const LockBasedFixedQueue& other) = delete;
@@ -31,8 +28,6 @@ public:
 
     LockBasedFixedQueue& operator =(const LockBasedFixedQueue& other) = delete;
     LockBasedFixedQueue& operator =(LockBasedFixedQueue&& other) = delete;
-
-    ~LockBasedFixedQueue() = default;
 
     // 현재 큐의 크기를 반환
     int Size()
@@ -77,13 +72,12 @@ public:
         headIndex++;
         return true;
     }
-
 private:
-    const int indexMask{BufferSize - 1};
-    std::array<Node, BufferSize> buffer{};
-    std::mutex _mutex; // 큐 접근을 보호하는 뮤텍스
-    long headIndex{0};
-    long tailIndex{0};
+
+    struct Node
+    {
+        T data;
+    };
 
     int size() const
     {
@@ -93,6 +87,11 @@ private:
         }
         return BufferSize - (headIndex - tailIndex);
     }
+    const int indexMask{BufferSize - 1};
+    std::array<Node, BufferSize> buffer{};
+    std::mutex _mutex; // 큐 접근을 보호하는 뮤텍스
+    long headIndex{0};
+    long tailIndex{0};
 
     // 동일한 인터페이스 유지를 위해 공개된 멤버 없음
 };

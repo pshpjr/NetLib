@@ -1,23 +1,13 @@
 ﻿#pragma once
-#include <atomic>
 #include "TLSPool.h"
 #include "Types.h"
 
+#include <atomic>
 
 template <typename T>
 class TLSLockFreeQueue
 {
-    struct Node
-    {
-        std::atomic<Node*> next = nullptr;
-        T data{};
-        Node() = default;
-
-        explicit Node(const T& data) : next(nullptr)
-                                     , data(data)
-        {
-        }
-    };
+    static constexpr int DEBUG_SIZE = 1000;
 
 public:
     TLSLockFreeQueue() : _queueId(reinterpret_cast<Node*>(++_gid))
@@ -141,8 +131,19 @@ public:
     {
         return _size.load();
     }
-
 private:
+    struct Node
+    {
+    public:
+        Node() = default;
+
+        explicit Node(const T& data) : next(nullptr)
+                                     , data(data)
+        {
+        }
+        std::atomic<Node*> next = nullptr;
+        T data{};
+    };
     static TlsPool<Node, 0, false> _tlsLfqNodePool;
     alignas(64) std::atomic<Node*> _head = nullptr;
 
@@ -155,7 +156,6 @@ private:
     alignas(64) std::atomic<short> _tailCount = 0;
     Node* _queueId;
     static std::atomic<psh::int64> _gid;
-    static constexpr int DEBUG_SIZE = 1000;
     long long _debugIndex = 0;
     //debugData<T> debug[debugSize];
 

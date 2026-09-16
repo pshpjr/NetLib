@@ -1,6 +1,6 @@
 #pragma once
-#include "Types.h"
 #include "SendBufferImpl.h"
+#include "Types.h"
 
 class SendBuffer
 {

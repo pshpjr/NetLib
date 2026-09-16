@@ -4,10 +4,10 @@
 #define MODERNOBJECTPOOL_H
 
 #include <Types.h>
-#include <vector>
-#include <memory>
-#include <iostream>
 
+#include <iostream>
+#include <memory>
+#include <vector>
 
 /**
  * unique_ptr로 관리되는 객체를 리턴하는 풀.
@@ -16,18 +16,12 @@
 template <typename T>
 class ModernObjectPool
 {
-    //어떤 객체를 생성할 때 메모리 정렬을 보장해야 한다.
+    // 어떤 객체를 생성할 때 메모리 정렬을 보장해야 한다.
     using storageType = std::aligned_storage_t<sizeof(T), alignof(T)>;
 
-    //소멸할때도 정렬에 맞춰서 소멸시켜줘야 한다.
+    // 소멸할때도 정렬에 맞춰서 소멸시켜줘야 한다.
     using storagePtr = std::unique_ptr<storageType>;
-
 public:
-    // Destruct 함수는 객체를 풀에 반환하는 역할을 함
-    static void Deleter(T* obj, ModernObjectPool<T>* pool)
-    {
-        pool->Free(obj);
-    }
 
     // 생성자: 첫 초기 사이즈만큼 풀을 확장함
     explicit ModernObjectPool(size_t initialSize = 100)
@@ -37,6 +31,11 @@ public:
 
     // 소멸자: 기본 소멸자 사용
     ~ModernObjectPool() = default;
+    // Destruct 함수는 객체를 풀에 반환하는 역할을 함
+    static void Deleter(T* obj, ModernObjectPool<T>* pool)
+    {
+        pool->Free(obj);
+    }
 
     // 공용 멤버 함수: 객체를 풀에 반환
     void Free(T* obj)
@@ -88,8 +87,8 @@ public:
             Deleter(static_cast<T*>(basePtr), this);
         });
     }
-
 private:
+
     // 비공용 멤버 함수: 풀을 확장
     void expandPool(size_t count)
     {

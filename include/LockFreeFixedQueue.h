@@ -1,14 +1,14 @@
-﻿#pragma once
-#include "MyWindows.h"
+#pragma once
 #include "Container.h"
 #include "Macro.h"
-
+#include "MyWindows.h"
 
 template <typename T, int BufferSize>
 class LockFreeFixedQueue
 {
     static_assert((BufferSize & (BufferSize - 1)) == 0);
 
+    // netlib-order: prerequisite - public buffer uses the private Node type.
     struct Node
     {
         std::atomic<bool> isUsed = false;
@@ -20,13 +20,14 @@ public:
         : indexMask(BufferSize - 1)
         , buffer(BufferSize) {}
 
+    ~LockFreeFixedQueue() = default;
+
     LockFreeFixedQueue(const LockFreeFixedQueue& other) = delete;
     LockFreeFixedQueue(LockFreeFixedQueue&& other) = delete;
 
     LockFreeFixedQueue& operator =(const LockFreeFixedQueue& other) = delete;
     LockFreeFixedQueue& operator =(LockFreeFixedQueue&& other) = delete;
 
-    ~LockFreeFixedQueue() = default;
 
     int Size() const
     {
@@ -88,5 +89,4 @@ public:
     const int indexMask;
     Vector<Node> buffer;
 
-public:
 };

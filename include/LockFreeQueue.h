@@ -1,38 +1,13 @@
 #pragma once
-#include <atomic>
 #include "LockFreeData.h"
 #include "MultiThreadObjectPool.h"
 
+#include <atomic>
 
 template <typename T>
 class LockFreeQueue
 {
-    union Pointer
-    {
-        struct
-        {
-            short tmp1;
-            short tmp2;
-            short tmp3;
-            short index;
-        };
-
-        long pointer;
-    };
-
-
-    struct Node
-    {
-        std::atomic<Node*> next = nullptr;
-        T data;
-        Node() = default;
-
-        explicit Node(const T& data)
-            : next(nullptr)
-            , data(data)
-        {
-        }
-    };
+    static constexpr int debugSize = 3000;
 
 public:
     explicit LockFreeQueue(int basePoolSize)
@@ -139,8 +114,37 @@ public:
 
         return loopCount;
     }
-
 private:
+    union Pointer
+    {
+        struct
+        {
+            short tmp1;
+            short tmp2;
+            short tmp3;
+            short index;
+        };
+
+        long pointer;
+    };
+
+
+    struct Node
+    {
+    public:
+        Node() = default;
+
+        explicit Node(const T& data)
+            : next(nullptr)
+            , data(data)
+        {
+        }
+        std::atomic<Node*> next = nullptr;
+        T data;
+    };
+
+
+    //DEBUG
     //이거 붙어있을 때 떨어져 있을 때 성능 차이 비교
     std::atomic<Node*> _head = nullptr;
     std::atomic<Node*> _tail = nullptr;
@@ -149,10 +153,6 @@ private:
     static long ID;
     std::atomic<long> _size = 0;
     MultiThreadObjectPool<Node> _pool;
-
-
-    //DEBUG
-    static constexpr int debugSize = 3000;
     long long debugIndex = 0;
     //debugData<T> debug[debugSize];
 };

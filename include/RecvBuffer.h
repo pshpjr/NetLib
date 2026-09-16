@@ -3,11 +3,22 @@
 
 class RecvBuffer
 {
+
+#ifdef SERIAL_DEBUG
+	static const int debugSize = 1000;
+#endif
+
     //USE_TLS_POOL(RecvBuffer);
     friend class IOCP;
     friend class Group;
 
 public:
+    RecvBuffer() = default;
+
+    RecvBuffer(RingBuffer* buffer, psh::int32 size);
+
+    ~RecvBuffer() = default;
+
     template <typename T>
     RecvBuffer& operator >>(T& value);
 
@@ -16,13 +27,6 @@ public:
     void GetWstr(wchar_t *buffer, int size);
     void GetCstr(char *buffer, int size);
 
-
-    //private:
-    RecvBuffer() = default;
-
-    RecvBuffer(RingBuffer* buffer, psh::int32 size);
-
-    ~RecvBuffer() = default;
 
     void CanPop(psh::uint64 popByte) const;
 
@@ -67,13 +71,6 @@ public:
     [[nodiscard]] int CanPopSize() const;
 
 private:
-    void Clear();
-    RingBuffer* _buffer = nullptr;
-    psh::int32 _size = 0;
-    long _refCount = 0;
-
-    //static TlsPool<RecvBuffer, 0, false> _pool;
-
 #ifdef SERIAL_DEBUG
 	//DEBUG
 	struct RelastinReleaseEncrypt_D
@@ -82,7 +79,17 @@ private:
 		psh::LPCWSTR location;
 		long long contentType;
 	};
-	static const int debugSize = 1000;
+
+#endif
+
+    void Clear();
+    RingBuffer* _buffer = nullptr;
+    psh::int32 _size = 0;
+    long _refCount = 0;
+
+    //static TlsPool<RecvBuffer, 0, false> _pool;
+
+#ifdef SERIAL_DEBUG
 
 	long debugIndex = 0;
 	RelastinReleaseEncrypt_D release_D[debugSize];

@@ -1,9 +1,10 @@
 ﻿#pragma once
+#include "Group.h"
+
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <type_traits>
-#include "Group.h"
 
 class GroupManager
 {

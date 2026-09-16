@@ -1,8 +1,9 @@
 ﻿#pragma once
-#include <functional>
-#include <string>
-#include <memory>
 #include "Utility.h"
+
+#include <functional>
+#include <memory>
+#include <string>
 
 namespace psh
 {

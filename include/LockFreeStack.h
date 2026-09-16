@@ -1,23 +1,12 @@
 ﻿#pragma once
-#include <atomic>
-#include "MultiThreadObjectPool.h"
 #include "LockFreeData.h"
+#include "MultiThreadObjectPool.h"
+
+#include <atomic>
 
 template <typename T>
 class LockFreeStack
 {
-    struct Node
-    {
-        T data{};
-        Node* next = nullptr;
-        Node() = default;
-
-        Node(const T& data) : data(data)
-                            , next(nullptr)
-        {
-        }
-    };
-
 public:
     LockFreeStack(): _pool(100)
     {
@@ -81,8 +70,19 @@ public:
         }
         return true;
     }
-
 private:
+    struct Node
+    {
+    public:
+        Node() = default;
+
+        Node(const T& data) : data(data)
+                            , next(nullptr)
+        {
+        }
+        T data{};
+        Node* next = nullptr;
+    };
     std::atomic<long> objectsInPool = 0;
 
     std::atomic<Node*> _top = nullptr;
