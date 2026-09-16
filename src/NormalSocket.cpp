@@ -5,6 +5,34 @@
 #include "Macro.h"
 #include "Socket.h"
 
+NetError NetError::FromNativeCode(const int nativeCode)
+{
+    switch (nativeCode)
+    {
+    case 0:
+        return {NetErrc::None, nativeCode};
+    case WSA_IO_PENDING:
+        return {NetErrc::Pending, nativeCode};
+    case WSAEINTR:
+        return {NetErrc::Interrupted, nativeCode};
+    case WSAECONNRESET:
+    case ERROR_NETNAME_DELETED:
+        return {NetErrc::ConnectionReset, nativeCode};
+    case WSAECONNABORTED:
+    case ERROR_CONNECTION_ABORTED:
+        return {NetErrc::ConnectionAborted, nativeCode};
+    case WSA_OPERATION_ABORTED:
+        return {NetErrc::OperationCanceled, nativeCode};
+    case WSAETIMEDOUT:
+    case ERROR_SEM_TIMEOUT:
+        return {NetErrc::TimedOut, nativeCode};
+    case ERROR_NOT_FOUND:
+        return {NetErrc::NotFound, nativeCode};
+    default:
+        return {NetErrc::Unknown, nativeCode};
+    }
+}
+
 
 Socket::Socket()
     : NormalSocket(INVALID_SOCKET, {0})
@@ -62,14 +90,23 @@ void Socket::Close()
     closesocket(_beforeSocket);
 }
 
-WsaErrCode Socket::Send(const LPWSABUF buf, const DWORD bufCount, const DWORD flag, const LPWSAOVERLAPPED lpOverlapped) const
+psh::Result<NetError> Socket::Send(const LPWSABUF buf, const DWORD bufCount, const DWORD flag, const LPWSAOVERLAPPED lpOverlapped) const
 {
-    return WSASend(_socket, buf, bufCount, nullptr, flag, lpOverlapped, nullptr);
+    if (WSASend(_socket, buf, bufCount, nullptr, flag, lpOverlapped, nullptr) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
-WsaErrCode Socket::Recv(const LPWSABUF buf, const DWORD bufCount, const LPDWORD flag, const LPWSAOVERLAPPED lpOverlapped) const
+psh::Result<NetError> Socket::Recv(const LPWSABUF buf, const DWORD bufCount, const LPDWORD flag,
+                                   const LPWSAOVERLAPPED lpOverlapped) const
 {
-    return WSARecv(_socket, buf, bufCount, nullptr, flag, lpOverlapped, nullptr);
+    if (WSARecv(_socket, buf, bufCount, nullptr, flag, lpOverlapped, nullptr) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
 

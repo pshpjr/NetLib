@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include "Utility.h"
 
+#include "Result.h"
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -74,5 +76,5 @@ using WsaErrCode = int;
 
 
 template <typename T>
-using WSAResult = psh::util::Result<T, WsaErrCode>;
+using WSAResult = psh::Result<T, WsaErrCode>;
 

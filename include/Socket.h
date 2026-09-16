@@ -3,6 +3,8 @@
 #include "BuildOption.h"
 #include "SocketTypes.h"
 #include "Types.h"
+#include "Result.h"
+
 #include SOCKET_HEADER
 
 class Address;
@@ -39,8 +41,9 @@ public:
     /// </summary>
     /// <returns>이상 없으면 0, 아니면 에러코드</returns>
     bool IsValid() const;
-    WsaErrCode Send(LPWSABUF buf, DWORD bufCount, DWORD flag, LPWSAOVERLAPPED lpOverlapped) const;
-    WsaErrCode Recv(LPWSABUF buf, DWORD bufCount, LPDWORD flag, LPWSAOVERLAPPED lpOverlapped) const;
+    // Pending is an error result; retain the I/O reference until completion.
+    psh::Result<NetError> Send(LPWSABUF buf, DWORD bufCount, DWORD flag, LPWSAOVERLAPPED lpOverlapped) const;
+    psh::Result<NetError> Recv(LPWSABUF buf, DWORD bufCount, LPDWORD flag, LPWSAOVERLAPPED lpOverlapped) const;
 
     WsaErrCode LastError();
     void SetLinger(bool on) const;

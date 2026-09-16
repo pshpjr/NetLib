@@ -122,12 +122,20 @@ void Session::Close()
 
 void Session::SetErr(const int errCode)
 {
-	_errCode = errCode;
+	SetErr(NetError::FromNativeCode(errCode));
+}
+
+void Session::SetErr(const NetError error)
+{
+	if (_errCode == NetErrc::None)
+	{
+		_errCode = error;
+	}
 }
 
 int Session::GetErr()
 {
-	return _errCode;
+	return _errCode.NativeCode;
 }
 
 // Lifetime
@@ -141,7 +149,7 @@ void Session::Reset()
 	_isSending = false;
 	_needCheckSendTimeout = false;
 	_timeout = _defaultTimeout;
-	_errCode = -1;
+	_errCode = {};
 
 	//RecvBuffer* recvBuffer;
 	//while ( _groupRecvQ.Dequeue(recvBuffer) )
@@ -318,11 +326,11 @@ void Session::RecvNotIncrease()
 
 
 	auto beforeSessionId = _sessionId;
-	if (const int recvResult = _socket.Recv(recvWsaBuf, bufferCount, &flags, _recvExecute.GetOverlapped());
-		recvResult == SOCKET_ERROR)
+	if (const auto recvResult = _socket.Recv(recvWsaBuf, bufferCount, &flags, _recvExecute.GetOverlapped());
+		recvResult.HasError())
 	{
-		const int error = WSAGetLastError();
-		if (error == WSA_IO_PENDING)
+		const auto error = recvResult.Error();
+		if (error == NetErrc::Pending)
 		{
 			//이렇게 확인하는 이유 : 컨텐츠에서 세션 연결 끊으려고 close 호출. 이 시점에 recv 안 걸려 있으면 iocount가 1인 상태로 유지됨.
 			// 이후 recv를 걸어버리면 세션이 살아있는 상태가 됨. 그래서 recv pending 이후 한 번 더 해보는 것.
@@ -341,11 +349,11 @@ void Session::RecvNotIncrease()
 		SetErr(error);
 		switch (error)
 		{
-		case WSAECONNABORTED:
+		case NetErrc::ConnectionAborted:
 			__fallthrough;
 
 		//원격지에서 끊었다. 
-		case WSAECONNRESET:
+		case NetErrc::ConnectionReset:
 			__fallthrough;
 			break;
 		default:
@@ -496,25 +504,25 @@ void Session::RealSend()
 
 	_dataNotSend = sendPackets;
 
-	if (const int sendResult = _socket.Send(sendWsaBuf, sendPackets, flags, _postSendExecute.GetOverlapped());
-		sendResult == SOCKET_ERROR)
+	if (const auto sendResult = _socket.Send(sendWsaBuf, sendPackets, flags, _postSendExecute.GetOverlapped());
+		sendResult.HasError())
 	{
-		const int error = WSAGetLastError();
-		if (error == WSA_IO_PENDING)
+		const auto error = sendResult.Error();
+		if (error == NetErrc::Pending)
 		{
 			return;
 		}
 		SetErr(error);
 		switch (error)
 		{
-		case WSAECONNABORTED:
+		case NetErrc::ConnectionAborted:
 			__fallthrough;
 		//원격지에서 끊었다. 
-		case WSAECONNRESET:
+		case NetErrc::ConnectionReset:
 			__fallthrough;
 			break;
 		default:
-			gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error
+			gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error.NativeCode
 			               , GetSessionId());
 			__debugbreak();
 		}

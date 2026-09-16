@@ -57,6 +57,7 @@ public:
 	void SetConnect();
 	void Close();
 	void SetErr(const int errCode);
+	void SetErr(NetError error);
 	int  GetErr();
 
 	// Lifetime
@@ -141,7 +142,7 @@ private:
 	// Connection
 	Socket _socket;
 	std::atomic_bool _connect = false;
-	volatile int _errCode = -1;
+	NetError _errCode{};
 
 	// Lifetime
 	std::atomic<long> _refCount = RELEASE_FLAG;
