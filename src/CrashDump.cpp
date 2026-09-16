@@ -6,8 +6,18 @@
 #include <DbgHelp.h>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 std::atomic<long> CrashDump::_dumpCount = 0;
+std::atomic<const char*> CrashDump::_buildInfo = "{\"build_version\":\"unavailable\"}\n";
+
+void CrashDump::SetBuildInfo(const char* json)
+{
+    if (json != nullptr)
+    {
+        _buildInfo.store(json);
+    }
+}
 
 CrashDump::CrashDump()
 {
@@ -79,16 +89,52 @@ LONG CrashDump::ExceptionFilter(const PEXCEPTION_POINTERS pExceptionPointer)
         eInfo.ExceptionPointers = pExceptionPointer;
         eInfo.ClientPointers = TRUE;
 
-        MiniDumpWriteDump(GetCurrentProcess(),
+        const char* buildInfo = _buildInfo.load();
+        const auto buildInfoSize = static_cast<ULONG>(std::strlen(buildInfo));
+        MINIDUMP_USER_STREAM versionStream{};
+        versionStream.Type = CommentStreamA;
+        versionStream.BufferSize = buildInfoSize + 1;
+        versionStream.Buffer = const_cast<char*>(buildInfo);
+        MINIDUMP_USER_STREAM_INFORMATION userStreams{};
+        userStreams.UserStreamCount = 1;
+        userStreams.UserStreamArray = &versionStream;
+
+        const BOOL saved = MiniDumpWriteDump(GetCurrentProcess(),
                           GetCurrentProcessId(),
                           hFile,
                           MiniDumpWithFullMemory,
                           &eInfo,
-                          nullptr,
+                          &userStreams,
                           nullptr);
+        const DWORD dumpError = saved ? ERROR_SUCCESS : GetLastError();
         CloseHandle(hFile);
 
-        wprintf(L"Dump File Saved\n\n\n");
+        if (saved)
+        {
+            WCHAR metadataFileName[MAX_PATH + 16]{};
+            swprintf_s(metadataFileName, L"%s.json", szFileName);
+            const HANDLE metadataFile = CreateFileW(metadataFileName, GENERIC_WRITE,
+                FILE_SHARE_READ, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (metadataFile != INVALID_HANDLE_VALUE)
+            {
+                DWORD written = 0;
+                if (!WriteFile(metadataFile, buildInfo, buildInfoSize, &written, nullptr)
+                    || written != buildInfoSize)
+                {
+                    wprintf(L"Build version JSON write failed\n");
+                }
+                CloseHandle(metadataFile);
+            }
+            else
+            {
+                wprintf(L"Build version JSON creation failed: %lu\n", GetLastError());
+            }
+            wprintf(L"Dump File Saved\n\n\n");
+        }
+        else
+        {
+            wprintf(L"Dump File Save Failed: %lu\n", dumpError);
+        }
     }
     return EXCEPTION_EXECUTE_HANDLER;
 }

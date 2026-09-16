@@ -11,6 +11,9 @@ public:
 
     static void Crash();
 
+    // Register before starting worker threads. The string must live until process exit.
+    static void SetBuildInfo(const char* json);
+
 
     static LONG WINAPI ExceptionFilter(__in const PEXCEPTION_POINTERS pExceptionPointer);
 
@@ -27,4 +30,7 @@ public:
     static void PurecallHandler();
 
     static std::atomic<long> _dumpCount;
+
+private:
+    static std::atomic<const char*> _buildInfo;
 };
