@@ -16,7 +16,7 @@ Group::Group()
 	: _iocp(nullptr), _groupLogger(std::make_unique<Logger>(
 		  L"GroupLogger", Logger::LogLevel::Debug)),
 	  _executable(std::make_unique<Executable>(Executable::IoType::Group,
-		  [this](ULONG_PTR, DWORD, void*) { Update(); })),
+		  [this](NetError, DWORD, void*) { Update(); })),
 	  _prevUpdate(std::chrono::steady_clock::now()),
 	  _nextUpdate(_prevUpdate + std::chrono::milliseconds(_loopMs)),
 	  _jobs(std::make_unique<LockFreeFixedQueue<GroupJob, 8192>>()),
@@ -292,10 +292,10 @@ void Group::SendPacket(const SessionID id, const SendBuffer& buffer) const
 	//  _iocp->SendPacketBlocking(id, buffer);
 }
 
-void Group::SendPackets(SessionID id, Vector<SendBuffer>& buffer)
-{
-	_iocp->SendPackets(id, buffer);
-}
+// void Group::SendPackets(SessionID id, Vector<SendBuffer>& buffer)
+// {
+// 	_iocp->SendPackets(id, buffer);
+// }
 
 void Group::MoveSession(const SessionID id, const GroupID dst) const
 {
@@ -304,7 +304,7 @@ void Group::MoveSession(const SessionID id, const GroupID dst) const
 
 void Group::Execute(IOCP* iocp) const
 {
-	_executable->Execute(0, static_cast<int>(Executable::IoType::Group), iocp);
+	_executable->Execute(NetError{}, static_cast<int>(Executable::IoType::Group), iocp);
 }
 
 bool Group::hasJob() const

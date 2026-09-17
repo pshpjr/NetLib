@@ -42,7 +42,7 @@ public:
     [[nodiscard]] GroupID GetGroupID() const;
     [[nodiscard]] int GetQueued() const;
     void SendPacket(SessionID id, const SendBuffer& buffer) const;
-    void SendPackets(SessionID id, Vector<SendBuffer>& buffer);
+    // void SendPackets(SessionID id, Vector<SendBuffer>& buffer);
 
     // static constexpr int debugSize = 2001;
 

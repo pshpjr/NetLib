@@ -165,7 +165,7 @@ private:
 	IOCP* _owner;
 	Executable& _recvExecute;
 	Executable& _postSendExecute;
-	Executable& _sendExecute;
+	// Executable& _sendExecute;
 	Executable& _releaseExecutable;
 
 	// Receive

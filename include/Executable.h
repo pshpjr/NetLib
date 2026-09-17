@@ -7,11 +7,12 @@
 
 #include <WinSock2.h>
 #include <Windows.h>
+#include "SocketTypes.h"
 
 class Executable final
 {
 public:
-    using Callback = std::function<void(ULONG_PTR, DWORD, void*)>;
+    using Callback = std::function<void(NetError, DWORD, void*)>;
 
     enum class IoType
     {
@@ -39,9 +40,9 @@ public:
         _callback = std::move(callback);
     }
 
-    void Execute(ULONG_PTR arg, DWORD transferred, void* iocp)
+    void Execute(NetError error, DWORD transferred, void* iocp)
     {
-        _callback(arg, transferred, iocp);
+        _callback(error, transferred, iocp);
     }
 
     void Clear()
@@ -94,7 +95,9 @@ private:
     };
 
     static_assert(std::is_standard_layout_v<OverlappedIO>);
-    inline static std::array ioTypeToStr = {
+
+    inline static std::array ioTypeToStr = 
+    {
         std::wstring(L"BASE"),
         std::wstring(L"SEND"),
         std::wstring(L"RECV"),
@@ -103,6 +106,7 @@ private:
         std::wstring(L"GROUP"),
         std::wstring(L"CUSTOM")
     };
+
     IoType _type{IoType::Base};
     OverlappedIO _overlapped;
     Callback _callback;

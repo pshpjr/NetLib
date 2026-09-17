@@ -4,35 +4,40 @@
 
 #include "Macro.h"
 #include "Socket.h"
+#include "Executable.h"
 
 NetError NetError::FromNativeCode(const int nativeCode)
+{
+    return {nativeCode};
+}
+
+NetErrc NetError::ToNetErrc(int nativeCode)
 {
     switch (nativeCode)
     {
     case 0:
-        return {NetErrc::None, nativeCode};
+        return NetErrc::None;
     case WSA_IO_PENDING:
-        return {NetErrc::Pending, nativeCode};
+        return NetErrc::Pending;
     case WSAEINTR:
-        return {NetErrc::Interrupted, nativeCode};
+        return NetErrc::Interrupted;
     case WSAECONNRESET:
     case ERROR_NETNAME_DELETED:
-        return {NetErrc::ConnectionReset, nativeCode};
+        return NetErrc::ConnectionReset;
     case WSAECONNABORTED:
     case ERROR_CONNECTION_ABORTED:
-        return {NetErrc::ConnectionAborted, nativeCode};
+        return NetErrc::ConnectionAborted;
     case WSA_OPERATION_ABORTED:
-        return {NetErrc::OperationCanceled, nativeCode};
+        return NetErrc::OperationCanceled;
     case WSAETIMEDOUT:
     case ERROR_SEM_TIMEOUT:
-        return {NetErrc::TimedOut, nativeCode};
+        return NetErrc::TimedOut;
     case ERROR_NOT_FOUND:
-        return {NetErrc::NotFound, nativeCode};
+        return NetErrc::NotFound;
     default:
-        return {NetErrc::Unknown, nativeCode};
+        return NetErrc::Unknown;
     }
 }
-
 
 Socket::Socket()
     : NormalSocket(INVALID_SOCKET, {0})
@@ -90,21 +95,39 @@ void Socket::Close()
     closesocket(_beforeSocket);
 }
 
-psh::Result<NetError> Socket::Send(const LPWSABUF buf, const DWORD bufCount, const DWORD flag, const LPWSAOVERLAPPED lpOverlapped) const
+psh::Result<NetError> Socket::Send(const LPWSABUF buf, const DWORD bufCount, Executable& executable) const
 {
-    if (WSASend(_socket, buf, bufCount, nullptr, flag, lpOverlapped, nullptr) == SOCKET_ERROR)
+    executable.Clear();
+    if (WSASend(_socket, buf, bufCount, nullptr, 0, executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
     {
-        return NetError::FromNativeCode(WSAGetLastError());
+        const auto error = NetError::FromNativeCode(WSAGetLastError());
+        if (error == NetErrc::Pending)
+        {
+            return error;
+        }
+        // TODO: 지금은 Executor를 몰라서 동기 에러 발생시 바로 처리. 재귀 오버플로우 위험 있음.
+        // 추후 Executor 받게 수정 후 post 하게 변경 예정.
+        executable.Execute(error, 0, nullptr);
+        return error;
     }
     return true;
 }
 
-psh::Result<NetError> Socket::Recv(const LPWSABUF buf, const DWORD bufCount, const LPDWORD flag,
-                                   const LPWSAOVERLAPPED lpOverlapped) const
+psh::Result<NetError> Socket::Recv(const LPWSABUF buf, const DWORD bufCount, Executable& executable) const
 {
-    if (WSARecv(_socket, buf, bufCount, nullptr, flag, lpOverlapped, nullptr) == SOCKET_ERROR)
+    DWORD flags = 0;
+    executable.Clear();
+    if (WSARecv(_socket, buf, bufCount, nullptr, &flags, executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
     {
-        return NetError::FromNativeCode(WSAGetLastError());
+        const auto error = NetError::FromNativeCode(WSAGetLastError());
+        if (error == NetErrc::Pending)
+        {
+            return error;
+        }
+        // TODO: 지금은 Executor를 몰라서 동기 에러 발생시 바로 처리. 재귀 오버플로우 위험 있음.
+        // 추후 Executor 받게 수정 후 post 하게 변경 예정.
+        executable.Execute(error, 0, nullptr);
+        return error;
     }
     return true;
 }

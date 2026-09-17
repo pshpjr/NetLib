@@ -8,6 +8,7 @@
 #include SOCKET_HEADER
 
 class Address;
+class Executable;
 
 
 class Socket : public SOCKET_CLASS
@@ -42,8 +43,8 @@ public:
     /// <returns>이상 없으면 0, 아니면 에러코드</returns>
     bool IsValid() const;
     // Pending is an error result; retain the I/O reference until completion.
-    psh::Result<NetError> Send(LPWSABUF buf, DWORD bufCount, DWORD flag, LPWSAOVERLAPPED lpOverlapped) const;
-    psh::Result<NetError> Recv(LPWSABUF buf, DWORD bufCount, LPDWORD flag, LPWSAOVERLAPPED lpOverlapped) const;
+    psh::Result<NetError> Send(LPWSABUF buf, DWORD bufCount, Executable& executable) const;
+    psh::Result<NetError> Recv(LPWSABUF buf, DWORD bufCount, Executable& executable) const;
 
     WsaErrCode LastError();
     void SetLinger(bool on) const;

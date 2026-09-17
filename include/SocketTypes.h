@@ -27,12 +27,11 @@ enum class NetErrc
 
 struct NetError
 {
-    NetErrc Code = NetErrc::None;
     int NativeCode = 0;
 
-    constexpr operator NetErrc() const noexcept
+    operator NetErrc() const
     {
-        return Code;
+        return ToNetErrc(NativeCode);
     }
 
     int GetNativeCode() const noexcept
@@ -41,5 +40,6 @@ struct NetError
     }
 
     static NetError FromNativeCode(int nativeCode);
+    static NetErrc  ToNetErrc(int nativeCode);
 };
 #endif //SOCKETTYPES_H

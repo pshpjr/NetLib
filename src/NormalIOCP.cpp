@@ -254,17 +254,17 @@ bool IOCP::SendPacket(const SessionID sessionId, const SendBuffer& sendBuffer, i
     /*TODO: 성능 비교하기.
      * 지금 버전이 반응성 더 낮고, CPU는 조금 덜 쓰리라 예상
      */
-    //session.TrySend();
+    session.TrySend();
 
 
-    if (session.CanSend())
-    {
+    // if (session.CanSend())
+    // {
 
-        session._sendExecute.Clear();
-        //InterlockedIncrement(&_iocpCompBufferSize);
-        PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
-            , session._sendExecute.GetOverlapped());
-    }
+    //     session._sendExecute.Clear();
+    //     //InterlockedIncrement(&_iocpCompBufferSize);
+    //     PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
+    //         , session._sendExecute.GetOverlapped());
+    // }
 
     session.Release(L"SendPacketRelease");
     return true;
@@ -292,47 +292,47 @@ bool IOCP::SendPacketBlocking(SessionID sessionId, SendBuffer& sendBuffer, int t
 
 //TODO: 지금 함수 정상 작동 안 할거임
 
-bool IOCP::SendPackets(const SessionID sessionId, std::vector<SendBuffer>& bufArr)
-{
-    const auto result = FindSession(sessionId, L"SendPacketInc");
-    if (result == nullptr)
-    {
-        return false;
-    }
-    auto& session = *result;
+// bool IOCP::SendPackets(const SessionID sessionId, std::vector<SendBuffer>& bufArr)
+// {
+//     const auto result = FindSession(sessionId, L"SendPacketInc");
+//     if (result == nullptr)
+//     {
+//         return false;
+//     }
+//     auto& session = *result;
 
-    int dataSize = 0;
-    for (auto& sendBuffer : bufArr)
-    {
-        auto buffer = sendBuffer.getBuffer();
-        ProcessBuffer(session, *buffer);
+//     int dataSize = 0;
+//     for (auto& sendBuffer : bufArr)
+//     {
+//         auto buffer = sendBuffer.getBuffer();
+//         ProcessBuffer(session, *buffer);
 
-        dataSize += sendBuffer.Size();
+//         dataSize += sendBuffer.Size();
 
-        if (dataSize < 4096)
-        {
-            continue;
-        }
+//         if (dataSize < 4096)
+//         {
+//             continue;
+//         }
 
-        //session.TrySend();
-        //if (session.CanSend())
-        //{
-        //	session._sendExecute.Clear();
-        //	PostQueuedCompletionStatus(_iocp, -1, (ULONG_PTR)&session, &session._sendExecute._overlapped);
-        //}
-        dataSize = 0;
-    }
-    //session.TrySend();
-    if (session.CanSend())
-    {
-        session._sendExecute.Clear();
-        PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
-                                   , session._sendExecute.GetOverlapped());
-    }
+//         //session.TrySend();
+//         //if (session.CanSend())
+//         //{
+//         //	session._sendExecute.Clear();
+//         //	PostQueuedCompletionStatus(_iocp, -1, (ULONG_PTR)&session, &session._sendExecute._overlapped);
+//         //}
+//         dataSize = 0;
+//     }
+//     //session.TrySend();
+//     if (session.CanSend())
+//     {
+//         session._sendExecute.Clear();
+//         PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
+//                                    , session._sendExecute.GetOverlapped());
+//     }
 
-    session.Release(L"SendPacketRelease");
-    return true;
-}
+//     session.Release(L"SendPacketRelease");
+//     return true;
+// }
 
 
 void IOCP::ProcessBuffer(Session& session, SendBufferImpl& buffer)
@@ -844,7 +844,7 @@ void IOCP::WorkerThread()
         }
         else
         {
-            overlapped->Execute((ULONG_PTR)session, transferred, this);
+            overlapped->Execute(NetError{}, transferred, this);
         }
     }
     printf("WorkerThread End\n");

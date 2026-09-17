@@ -22,13 +22,33 @@ Session::Session()
 	  , _owner(nullptr)
 	  , _recvExecute(*new Executable(Executable::IoType::Recv))
 	  , _postSendExecute(*new Executable(Executable::IoType::Postrecv))
-	  , _sendExecute(*new Executable(Executable::IoType::Send))
+	  // , _sendExecute(*new Executable(Executable::IoType::Send))
 	  , _releaseExecutable(*new Executable(Executable::IoType::Release))
 {
-	_recvExecute.SetCallback([this](ULONG_PTR, DWORD transferred, void* iocp)
+	_recvExecute.SetCallback([this](NetError error, DWORD transferred, void*)
 	{
+		if (error != NetErrc::None)
+		{
+			SetErr(error);
+			switch (error)
+			{
+			case NetErrc::ConnectionAborted:
+				__fallthrough;
+
+			//원격지에서 끊었다. 
+			case NetErrc::ConnectionReset:
+				__fallthrough;
+				break;
+			default:
+				{
+					__debugbreak();
+				}
+			}
+			Release(L"RecvErrorRelease");
+			return;
+		}
 		_recvQ.MoveRear(transferred);
-		auto& server = *static_cast<IOCP*>(iocp);
+		auto& server = *_owner;
 		if (GetGroupID() != GroupManager::BaseGroupID() && !recvHandleWaitInGroup())
 		{
 			setRecvHandled(true);
@@ -36,18 +56,37 @@ Session::Session()
 		}
 		else if (_staticKey)
 		{
-			RecvHandler<NetHeader>(iocp);
+			RecvHandler<NetHeader>(_owner);
 		}
 		else
 		{
-			RecvHandler<LANHeader>(iocp);
+			RecvHandler<LANHeader>(_owner);
 		}
 		RecvNotIncrease();
 	});
 
-	_postSendExecute.SetCallback([this](ULONG_PTR, DWORD, void* iocp)
+	_postSendExecute.SetCallback([this](NetError error, DWORD, void*)
 	{
-		auto& server = *static_cast<IOCP*>(iocp);
+		if (error != NetErrc::None)
+		{
+			SetErr(error);
+			switch (error)
+			{
+			case NetErrc::ConnectionAborted:
+				__fallthrough;
+			//원격지에서 끊었다. 
+			case NetErrc::ConnectionReset:
+				__fallthrough;
+				break;
+			default:
+				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error.NativeCode
+				               , GetSessionId());
+				__debugbreak();
+			}
+			Release(L"SendErrorRelease");
+			return;
+		}
+		auto& server = *_owner;
 		const auto sentCount = _dataNotSend.exchange(0);
 		server.increaseSendCount(sentCount);
 		for (int i = 0; i < sentCount; i++)
@@ -60,12 +99,13 @@ Session::Session()
 		Release(L"PostSendRelease");
 	});
 
-	_sendExecute.SetCallback([this](ULONG_PTR, DWORD, void*)
-	{
-		RealSend();
-	});
+	// TODO: Executor 도입 후 TrySend()를 Post하도록 변경 예정.
+	// _sendExecute.SetCallback([this](NetError, DWORD, void*)
+	// {
+	// 	RealSend();
+	// });
 
-	_releaseExecutable.SetCallback([this](ULONG_PTR, DWORD, void*)
+	_releaseExecutable.SetCallback([this](NetError, DWORD, void*)
 	{
 		_owner->_onDisconnect(GetSessionId(), GetErr());
 		Reset();
@@ -142,7 +182,7 @@ int Session::GetErr()
 void Session::Reset()
 {
 	//debugIndex = 0;
-	_sendExecute.Clear();
+	// _sendExecute.Clear();
 	_recvExecute.Clear();
 	_postSendExecute.Clear();
 	_recvQ.Clear();
@@ -306,7 +346,6 @@ void Session::RecvNotIncrease()
 	}
 	int bufferCount = 1;
 	WSABUF recvWsaBuf[2] = {};
-	DWORD flags = 0;
 
 	recvWsaBuf[0].buf = _recvQ.GetRear();
 	recvWsaBuf[0].len = _recvQ.DirectEnqueueSize();
@@ -318,7 +357,6 @@ void Session::RecvNotIncrease()
 
 		bufferCount = 2;
 	}
-	_recvExecute.Clear();
 
 	ASSERT_CRASH(recvWsaBuf[0].len + recvWsaBuf[1].len != 0, "RecvBuffer is 0");
 
@@ -326,7 +364,7 @@ void Session::RecvNotIncrease()
 
 
 	auto beforeSessionId = _sessionId;
-	if (const auto recvResult = _socket.Recv(recvWsaBuf, bufferCount, &flags, _recvExecute.GetOverlapped());
+	if (const auto recvResult = _socket.Recv(recvWsaBuf, bufferCount, _recvExecute);
 		recvResult.HasError())
 	{
 		const auto error = recvResult.Error();
@@ -346,22 +384,6 @@ void Session::RecvNotIncrease()
 
 			return;
 		}
-		SetErr(error);
-		switch (error)
-		{
-		case NetErrc::ConnectionAborted:
-			__fallthrough;
-
-		//원격지에서 끊었다. 
-		case NetErrc::ConnectionReset:
-			__fallthrough;
-			break;
-		default:
-			{
-				__debugbreak();
-			}
-		}
-		Release(L"RecvErrorRelease");
 	}
 }
 
@@ -499,35 +521,9 @@ void Session::RealSend()
 	_needCheckSendTimeout = true;
 	_lastSend = std::chrono::steady_clock::now();
 
-	constexpr DWORD flags = 0;
-	_postSendExecute.Clear();
-
 	_dataNotSend = sendPackets;
 
-	if (const auto sendResult = _socket.Send(sendWsaBuf, sendPackets, flags, _postSendExecute.GetOverlapped());
-		sendResult.HasError())
-	{
-		const auto error = sendResult.Error();
-		if (error == NetErrc::Pending)
-		{
-			return;
-		}
-		SetErr(error);
-		switch (error)
-		{
-		case NetErrc::ConnectionAborted:
-			__fallthrough;
-		//원격지에서 끊었다. 
-		case NetErrc::ConnectionReset:
-			__fallthrough;
-			break;
-		default:
-			gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error.NativeCode
-			               , GetSessionId());
-			__debugbreak();
-		}
-		Release(L"SendErrorRelease");
-	}
+	_socket.Send(sendWsaBuf, sendPackets, _postSendExecute);
 }
 
 // Timeout
