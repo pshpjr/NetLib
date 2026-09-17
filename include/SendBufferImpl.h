@@ -2,8 +2,10 @@
 #include "Protocol.h"
 #include "TLSPool.h"
 
+#include <atomic>
 #include <mutex>
 #include <stdexcept>
+#include <string_view>
 
 //#define SEND_DEBUG
 
@@ -54,10 +56,10 @@ public:
 
     long IncreaseRef(LPCWCH content = L"")
     {
-        auto refIncResult = ++_refCount;
+        const auto refIncResult = _refCount.fetch_add(1) + 1;
 
 #ifdef SEND_DEBUG
-		auto index = InterlockedIncrement(&debugIndex);
+		auto index = ++debugIndex;
 		release_D[index % debugSize] = { refIncResult,content,0 };
 #else
         UNREFERENCED_PARAMETER(content);
@@ -68,10 +70,10 @@ public:
 
     void Release(LPCWCH content = L"")
     {
-        auto refResult = --_refCount;
+        const auto refResult = _refCount.fetch_sub(1) - 1;
 
 #ifdef SEND_DEBUG
-		auto index = InterlockedIncrement(&debugIndex);
+		auto index = ++debugIndex;
 		release_D[index % debugSize] = { refResult,content,0 };
 #else
         UNREFERENCED_PARAMETER(content);
@@ -110,7 +112,7 @@ private:
 	struct RelastinReleaseEncrypt_D
 	{
 		long refCount;
-		psh::LPCWSTR location;
+		std::wstring_view location;
 		long long contentType;
 	};
 
@@ -181,7 +183,8 @@ private:
     void TryEncode(char staticKey);
     void Encode(char staticKey);
 
-    long _refCount = 0;
+    // Shared across sessions: reference updates must remain atomic.
+    std::atomic<long> _refCount = 0;
 
 
     char _buffer[BUFFER_SIZE + sizeof(NetHeader)];
@@ -202,7 +205,7 @@ private:
 #ifdef SEND_DEBUG
 
 
-	long debugIndex = 0;
+	std::atomic<long> debugIndex = 0;
 	RelastinReleaseEncrypt_D release_D[debugSize];
 
 	//static void PoolDebug()
