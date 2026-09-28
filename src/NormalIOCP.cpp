@@ -743,106 +743,34 @@ void IOCP::GroupThread()
 void IOCP::WorkerThread()
 {
     psh::util::set_thread_name("IOCP Worker Thread");
-    using namespace std::chrono;
     PRO_THREAD("WORKER");
-    
     srand(GetCurrentThreadId());
+
     while (true)
     {
         DWORD transferred = 0;
-        LPOVERLAPPED overlap = nullptr;
-        Session* session = nullptr;
+        ULONG_PTR key = 0;
+        OVERLAPPED* overlap = nullptr;
 
+        const auto ret = GetQueuedCompletionStatus(
+            _iocp, &transferred, &key, &overlap, INFINITE);
 
-        auto ret = GetQueuedCompletionStatus(_iocp, &transferred, (PULONG_PTR)&session, &overlap, INFINITE);
-
-        Executable* overlapped = Executable::GetExecutable(overlap);
-
-        if (transferred == 0 && session == nullptr)
+        if (transferred == 0 && overlap == nullptr)
         {
             PostQueuedCompletionStatus(_iocp, 0, 0, nullptr);
             break;
         }
 
-        if (transferred == 0 && ret != 0)
+        NetError error{};
+
+        if (transferred == 0 && ret == 0)
         {
-            session->Release(L"ConnectEndRel", 0);
-            continue;
+            error = NetError::FromNativeCode(WSAGetLastError());
         }
 
-
-        auto errNo = 0;
-
-        if (transferred == 0 && session != nullptr)
-        {
-            errNo = WSAGetLastError();
-            switch (errNo)
-            {
-            //정상종료됨.
-            case 0:
-                session->SetErr(errNo);
-                break;
-            case ERROR_NETNAME_DELETED:
-                session->SetErr(errNo);
-                break;
-            //ERROR_SEM_TIMEOUT. 장치에서 끊은 경우 (5회 재전송 실패 등..)
-            //제로 윈도우가 계속 떴다.
-            case ERROR_SEM_TIMEOUT:
-                {
-                    auto now = steady_clock::now();
-                    auto recvWait = duration_cast<milliseconds>(now - session->lastRecv);
-                    auto sendWait = session->_needCheckSendTimeout
-                                        ? duration_cast<milliseconds>(now - session->_lastSend)
-                                        : 0ms;
-
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
-                                   , L"SemaphoreTimeout  sessionID : %d, executableType : %s, sendWait : %d recvWait : %d"
-                                   , session->GetSessionId(), Executable::GetIoType(*overlapped).c_str(), sendWait
-                                   , recvWait);
-                    session->SetErr(errNo);
-                    ++_tcpSemaphoreTimeout;
-                    break;
-                }
-
-            //WSA_OPERATION_ABORTED cancleIO로 인한 것.
-            //서버가 먼저 끊는 상황에서 발생.
-            case WSA_OPERATION_ABORTED:
-                gLogger->Write(L"ConnectionError", Logger::LogLevel::Debug
-                               , L"Operation Aborted sessionID : %d, executableType : %s", session->GetSessionId()
-                               , Executable::GetIoType(*overlapped).c_str());
-                session->SetErr(errNo);
-                break;
-            //io 도중에 closeSocket 호출
-            //생기면 안 됨.
-            case ERROR_CONNECTION_ABORTED:
-                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
-                               , L"Connection Aborted sessionID : %d, executableType : %s", session->GetSessionId()
-                               , Executable::GetIoType(*overlapped).c_str());
-                session->SetErr(errNo);
-                break;
-            case ERROR_NOT_FOUND:
-                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error
-                               , L"Error Not Found sessionID : %d, executableType : %s", session->GetSessionId()
-                               , Executable::GetIoType(*overlapped).c_str());
-                session->SetErr(errNo);
-                break;
-                [[unlikely]] default:
-                {
-                    session->SetErr(errNo);
-                    auto now = steady_clock::now();
-                    auto recvWait = duration_cast<milliseconds>(now - session->lastRecv);
-                    auto sendWait = duration_cast<milliseconds>(
-                        now - session->_lastSend);
-                    __debugbreak();
-                }
-            }
-            session->Release(L"GQCSErrorRelease", errNo);
-        }
-        else
-        {
-            overlapped->Execute(NetError{}, transferred);
-        }
+        Executable::GetExecutable(overlap)->Execute(error, transferred);
     }
+
     printf("WorkerThread End\n");
 }
 

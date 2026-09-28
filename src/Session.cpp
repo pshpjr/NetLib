@@ -28,24 +28,69 @@ Session::Session()
 {
 	_recvExecute.SetCallback([this](NetError error, DWORD transferred)
 	{
+		if (error == NetErrc::None && transferred == 0)
+		{
+			Release(L"ConnectEndRel", 0);
+			return;
+		}
+
 		if (error != NetErrc::None)
 		{
+			using namespace std::chrono;
+
+			const int errNo = error.NativeCode;
+			const auto* type = Executable::GetIoType(_recvExecute).c_str();
 			SetErr(error);
+
 			switch (error)
 			{
-			case NetErrc::ConnectionAborted:
-				__fallthrough;
-
-			//원격지에서 끊었다. 
 			case NetErrc::ConnectionReset:
-				__fallthrough;
 				break;
-			default:
-				{
-					__debugbreak();
-				}
+
+			case NetErrc::ConnectionAborted:
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Error,
+					L"Connection Aborted sessionID : %d, executableType : %s, errNo : %d",
+					GetSessionId(), type, errNo);
+				break;
+
+			case NetErrc::TimedOut:
+			{
+				const auto now = steady_clock::now();
+				const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
+				const auto sendWait = _needCheckSendTimeout
+					? duration_cast<milliseconds>(now - _lastSend)
+					: 0ms;
+
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Error,
+					L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
+					L"sendWait : %d recvWait : %d, errNo : %d",
+					GetSessionId(), type, sendWait, recvWait, errNo);
+				++_owner->_tcpSemaphoreTimeout;
+				break;
 			}
-			Release(L"RecvErrorRelease");
+
+			case NetErrc::OperationCanceled:
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Debug,
+					L"Operation Aborted sessionID : %d, executableType : %s, errNo : %d",
+					GetSessionId(), type, errNo);
+				break;
+
+			case NetErrc::NotFound:
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Error,
+					L"Error Not Found sessionID : %d, executableType : %s, errNo : %d",
+					GetSessionId(), type, errNo);
+				break;
+
+			default:
+				__debugbreak();
+				break;
+			}
+
+			Release(L"GQCSErrorRelease", errNo);
 			return;
 		}
 		_recvQ.MoveRear(transferred);
@@ -66,25 +111,71 @@ Session::Session()
 		RecvNotIncrease();
 	});
 
-	_postSendExecute.SetCallback([this](NetError error, DWORD)
+	_postSendExecute.SetCallback([this](NetError error, DWORD transferred)
 	{
+		if (error == NetErrc::None && transferred == 0)
+		{
+			Release(L"ConnectEndRel", 0);
+			return;
+		}
+
 		if (error != NetErrc::None)
 		{
+			using namespace std::chrono;
+
+			const int errNo = error.NativeCode;
+			const auto* type = Executable::GetIoType(_postSendExecute).c_str();
 			SetErr(error);
+
 			switch (error)
 			{
-			case NetErrc::ConnectionAborted:
-				__fallthrough;
-			//원격지에서 끊었다. 
 			case NetErrc::ConnectionReset:
-				__fallthrough;
 				break;
-			default:
-				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"SendFail errNo : %d, sessionID : %d", error.NativeCode
-				               , GetSessionId());
-				__debugbreak();
+
+			case NetErrc::ConnectionAborted:
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Error,
+					L"Connection Aborted sessionID : %d, executableType : %s, errNo : %d",
+					GetSessionId(), type, errNo);
+				break;
+
+			case NetErrc::TimedOut:
+			{
+				const auto now = steady_clock::now();
+				const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
+				const auto sendWait = _needCheckSendTimeout
+					? duration_cast<milliseconds>(now - _lastSend)
+					: 0ms;
+
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Error,
+					L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
+					L"sendWait : %d recvWait : %d, errNo : %d",
+					GetSessionId(), type, sendWait, recvWait, errNo);
+				++_owner->_tcpSemaphoreTimeout;
+				break;
 			}
-			Release(L"SendErrorRelease");
+
+			case NetErrc::OperationCanceled:
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Debug,
+					L"Operation Aborted sessionID : %d, executableType : %s, errNo : %d",
+					GetSessionId(), type, errNo);
+				break;
+
+			case NetErrc::NotFound:
+				gLogger->Write(
+					L"ConnectionError", Logger::LogLevel::Error,
+					L"Error Not Found sessionID : %d, executableType : %s, errNo : %d",
+					GetSessionId(), type, errNo);
+				break;
+
+			default:
+				__debugbreak();
+				break;
+			}
+
+			Release(L"GQCSErrorRelease", errNo);
 			return;
 		}
 		auto& server = *_owner;
