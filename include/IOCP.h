@@ -61,7 +61,7 @@ public:
     void ReleaseFreeIndex(unsigned short index);
     void ProcessBuffer(Session& session, SendBufferImpl& buffer);
     //connect
-    WSAResult<SessionID> GetClientSession(const String& ip, Port port);
+    psh::Result<SessionID, NetError> GetClientSession(const String& ip, Port port);
     bool IsValidSession(SessionID id);
     //GROUP
 

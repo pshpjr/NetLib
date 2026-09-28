@@ -23,18 +23,18 @@ public:
 
     ~Socket() = default;
 
-    Socket(SOCKET socket, SOCKADDR_IN address);
+    Socket(NativeHandle socket, SOCKADDR_IN address);
 
     bool IsSameSubnet(const String& comp, char subnetMaskBits) const;
     static bool IsSameSubnet(const IN_ADDR& a, const IN_ADDR& b, char subnetMaskBits);
 
-    bool Init();
-    bool Bind(const String& ip, psh::uint16 port);
-    bool Listen(int backlog) const;
-    Socket Accept() const;
-    WSAResult<bool> Connect(const String& ip, psh::uint16 port);
-    void CancelIO() const;
-    void Close();
+    psh::Result<NetError> Init();
+    psh::Result<NetError> Bind(const String& ip, psh::uint16 port);
+    psh::Result<NetError> Listen(int backlog) const;
+    psh::Result<Socket, NetError> Accept() const;
+    psh::Result<NetError> Connect(const String& ip, psh::uint16 port);
+    psh::Result<NetError> CancelIO() const;
+    psh::Result<NetError> Close();
     static IN_ADDR Ip2Address(const psh::WCHAR* ip);
 
     /// <summary>
@@ -43,18 +43,20 @@ public:
     /// <returns>이상 없으면 0, 아니면 에러코드</returns>
     bool IsValid() const;
     // Pending is an error result; retain the I/O reference until completion.
+    //  executable은 추후 socket 생성자에서 executor 받으면 제거 할 예정. 그 때는 executable을 소켓이 가지게 수정한다. 
+    //  지금은 executor 개념이 없어 socket 내부에 넣을 수 없다. 
     psh::Result<NetError> Send(LPWSABUF buf, DWORD bufCount, Executable& executable) const;
     psh::Result<NetError> Recv(LPWSABUF buf, DWORD bufCount, Executable& executable) const;
 
-    WsaErrCode LastError();
-    void SetLinger(bool on) const;
-    void SetNoDelay(bool on) const;
-    void SetSendBuffer(int size) const;
+    NetError LastError();
+    psh::Result<NetError> SetLinger(bool on) const;
+    psh::Result<NetError> SetNoDelay(bool on) const;
+    psh::Result<NetError> SetSendBuffer(int size) const;
 
     SOCKADDR_IN GetSockAddress() const;
     String GetIp() const;
     psh::uint16 GetPort() const;
 
 private:
-    SOCKET _beforeSocket = INVALID_SOCKET;
+    NativeHandle _beforeSocket = InvalidSocket;
 };

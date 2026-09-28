@@ -34,6 +34,19 @@ NetErrc NetError::ToNetErrc(int nativeCode)
         return NetErrc::TimedOut;
     case ERROR_NOT_FOUND:
         return NetErrc::NotFound;
+    case WSAECONNREFUSED:
+        return NetErrc::ConnectionRefused;
+    case WSAENETUNREACH:
+        return NetErrc::NetworkUnreachable;
+    case WSAEADDRINUSE:
+        return NetErrc::AddressInUse;
+    case WSAEADDRNOTAVAIL:
+        return NetErrc::AddressNotAvailable;
+    case WSAEACCES:
+        return NetErrc::PermissionDenied;
+    case WSAENOBUFS:
+    case WSAEMFILE:
+        return NetErrc::ResourceExhausted;
     default:
         return NetErrc::Unknown;
     }
@@ -70,29 +83,29 @@ bool Socket::IsSameSubnet(const IN_ADDR& a, const IN_ADDR& b, const char subnetM
     return compMasked == tarMasked;
 }
 
-void Socket::CancelIO() const
+psh::Result<NetError> Socket::CancelIO() const
 {
-    if (const auto result = CancelIoEx(reinterpret_cast<HANDLE>(_socket), nullptr);
-        result == 0)
+    if (CancelIoEx(reinterpret_cast<HANDLE>(_socket), nullptr) == 0)
     {
-        //소켓 닫혀서 gqcs에러 받은 상황에서 send 실패하면 io 자체가 없음. 에러 아님. 
-        if (const auto error = GetLastError();
-            error == ERROR_NOT_FOUND)
+        const auto error = NetError::FromNativeCode(GetLastError());
+        // 취소할 I/O가 없는 경우는 성공으로 처리한다.
+        if (error != NetErrc::NotFound)
         {
-        }
-        else
-        {
-            __debugbreak();
-            printf("error : %d\n", error);
+            return error;
         }
     }
+    return true;
 }
 
-void Socket::Close()
+psh::Result<NetError> Socket::Close()
 {
     _beforeSocket = _socket;
     _socket = INVALID_SOCKET;
-    closesocket(_beforeSocket);
+    if (closesocket(_beforeSocket) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
 psh::Result<NetError> Socket::Send(const LPWSABUF buf, const DWORD bufCount, Executable& executable) const
@@ -133,26 +146,38 @@ psh::Result<NetError> Socket::Recv(const LPWSABUF buf, const DWORD bufCount, Exe
 }
 
 
-WsaErrCode Socket::LastError()
+NetError Socket::LastError()
 {
-    return WSAGetLastError();
+    return NetError::FromNativeCode(WSAGetLastError());
 }
 
-void Socket::SetLinger(const bool on) const
+psh::Result<NetError> Socket::SetLinger(const bool on) const
 {
     linger l = {on, 0};
-    setsockopt(_socket, SOL_SOCKET, SO_LINGER, (char*)&l, sizeof(l));
+    if (setsockopt(_socket, SOL_SOCKET, SO_LINGER, (char*)&l, sizeof(l)) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
-void Socket::SetNoDelay(bool on) const
+psh::Result<NetError> Socket::SetNoDelay(bool on) const
 {
-    setsockopt(_socket, IPPROTO_TCP, TCP_NODELAY, (char*)&on, sizeof(on));
+    if (setsockopt(_socket, IPPROTO_TCP, TCP_NODELAY, (char*)&on, sizeof(on)) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
-void Socket::SetSendBuffer(const int size) const
+psh::Result<NetError> Socket::SetSendBuffer(const int size) const
 {
     int bufSize = size;
-    setsockopt(_socket, SOL_SOCKET, SO_SNDBUF, (char*)&bufSize, sizeof(bufSize));
+    if (setsockopt(_socket, SOL_SOCKET, SO_SNDBUF, (char*)&bufSize, sizeof(bufSize)) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
 
@@ -176,12 +201,12 @@ psh::uint16 Socket::GetPort() const
     return result;
 }
 
-bool Socket::Init()
+psh::Result<NetError> Socket::Init()
 {
     _socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (_socket == INVALID_SOCKET)
     {
-        return false;
+        return NetError::FromNativeCode(WSAGetLastError());
     }
     return true;
 }
@@ -192,33 +217,44 @@ bool Socket::IsValid() const
 }
 
 
-bool Socket::Bind(const String& ip, psh::uint16 port)
+psh::Result<NetError> Socket::Bind(const String& ip, psh::uint16 port)
 {
     memset(&_sockAddr, 0, sizeof(_sockAddr));
     _sockAddr.sin_family = AF_INET;
     _sockAddr.sin_addr = Ip2Address(ip.c_str());
     _sockAddr.sin_port = htons(port);
 
-    return SOCKET_ERROR != bind(_socket, reinterpret_cast<SOCKADDR*>(&_sockAddr), sizeof(_sockAddr));
+    if (bind(_socket, reinterpret_cast<SOCKADDR*>(&_sockAddr), sizeof(_sockAddr)) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
-bool Socket::Listen(const int backlog) const
+psh::Result<NetError> Socket::Listen(const int backlog) const
 {
-    return SOCKET_ERROR != listen(_socket, backlog);
+    if (listen(_socket, backlog) == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
+    return true;
 }
 
-Socket Socket::Accept() const
+psh::Result<Socket, NetError> Socket::Accept() const
 {
     SOCKADDR_IN clientAddr = {};
     int len = sizeof(SOCKADDR);
 
     SOCKET clientSocket = accept(_socket, (SOCKADDR*)&clientAddr, &len);
+    if (clientSocket == INVALID_SOCKET)
+    {
+        return NetError::FromNativeCode(WSAGetLastError());
+    }
 
-
-    return {clientSocket, clientAddr};
+    return Socket(clientSocket, clientAddr);
 }
 
-WSAResult<bool> Socket::Connect(const String& ip, psh::uint16 port)
+psh::Result<NetError> Socket::Connect(const String& ip, psh::uint16 port)
 {
     memset(&_sockAddr, 0, sizeof(_sockAddr));
     _sockAddr.sin_family = AF_INET;
@@ -227,8 +263,7 @@ WSAResult<bool> Socket::Connect(const String& ip, psh::uint16 port)
 
     if (SOCKET_ERROR == connect(_socket, (SOCKADDR*)&_sockAddr, sizeof(_sockAddr)))
     {
-        const WsaErrCode result = WSAGetLastError();
-        return result;
+        return NetError::FromNativeCode(WSAGetLastError());
     }
 
     return true;

@@ -117,21 +117,20 @@ bool IOCP::Init(const String& ip
 
     _threadArray.reserve(workerThread + 4);
 
-    _listenSocket->Init();
-    if (_listenSocket->IsValid() == false)
+    if (_listenSocket->Init().HasError())
     {
         return false;
     }
     _listenSocket->SetLinger(true);
     //_listenSocket->SetNoDelay(true);
     //_listenSocket->SetSendBuffer(0);
-    if (_listenSocket->Bind(ip, port) == false)
+    if (_listenSocket->Bind(ip, port).HasError())
     {
         _listenSocket->Close();
         return false;
     }
 
-    if (_listenSocket->Listen(backlog) == false)
+    if (_listenSocket->Listen(backlog).HasError())
     {
         _listenSocket->Close();
         return false;
@@ -361,19 +360,16 @@ void IOCP::ReleaseFreeIndex(unsigned short index)
     _freeIndex->Push(index);
 }
 
-WSAResult<SessionID> IOCP::GetClientSession(const String& ip, const Port port)
+psh::Result<SessionID, NetError> IOCP::GetClientSession(const String& ip, const Port port)
 {
     unsigned short index;
     GetFreeIndex(index);
 
     Socket s;
-    s.Init();
-
-    if (!s.IsValid())
+    if (const auto initResult = s.Init(); initResult.HasError())
     {
         ReleaseFreeIndex(index);
-        s.Close();
-        return s.LastError();
+        return initResult.Error();
     }
 
     s.SetLinger(true);
@@ -859,22 +855,24 @@ void IOCP::AcceptThread()
 
     while (_isRunning)
     {
-        Socket clientSocket = _listenSocket->Accept();
+        auto acceptResult = _listenSocket->Accept();
 
-        if (!clientSocket.IsValid())
+        if (acceptResult.HasError())
         {
             //accept 서버 닫으려고 중단한 경우.
-            if (const auto err = WSAGetLastError();
-                err == WSAEINTR)
+            const auto error = acceptResult.Error();
+            if (error == NetErrc::Interrupted)
             {
                 break;
             }
 
-            printf("AcceptError %d", WSAGetLastError());
+            printf("AcceptError %d", error.GetNativeCode());
             _acceptErrorCount++;
             __debugbreak();
+            continue;
         }
 
+        Socket clientSocket = acceptResult.Value();
         if (OnAccept(clientSocket.GetSockAddress()) == false)
         {
             //TODO: 여기서 cancleIO가 의미 없음.
