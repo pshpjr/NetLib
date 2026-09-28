@@ -745,7 +745,7 @@ void IOCP::WorkerThread()
     psh::util::set_thread_name("IOCP Worker Thread");
     using namespace std::chrono;
     PRO_THREAD("WORKER");
-
+    
     srand(GetCurrentThreadId());
     while (true)
     {
@@ -840,7 +840,7 @@ void IOCP::WorkerThread()
         }
         else
         {
-            overlapped->Execute(NetError{}, transferred, this);
+            overlapped->Execute(NetError{}, transferred);
         }
     }
     printf("WorkerThread End\n");

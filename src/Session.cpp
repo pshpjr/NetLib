@@ -26,7 +26,7 @@ Session::Session()
 	  // , _sendExecute(*new Executable(Executable::IoType::Send))
 	  , _releaseExecutable(*new Executable(Executable::IoType::Release))
 {
-	_recvExecute.SetCallback([this](NetError error, DWORD transferred, void*)
+	_recvExecute.SetCallback([this](NetError error, DWORD transferred)
 	{
 		if (error != NetErrc::None)
 		{
@@ -66,7 +66,7 @@ Session::Session()
 		RecvNotIncrease();
 	});
 
-	_postSendExecute.SetCallback([this](NetError error, DWORD, void*)
+	_postSendExecute.SetCallback([this](NetError error, DWORD)
 	{
 		if (error != NetErrc::None)
 		{
@@ -101,12 +101,12 @@ Session::Session()
 	});
 
 	// TODO: Executor 도입 후 TrySend()를 Post하도록 변경 예정.
-	// _sendExecute.SetCallback([this](NetError, DWORD, void*)
+	// _sendExecute.SetCallback([this](NetError, DWORD)
 	// {
 	// 	RealSend();
 	// });
 
-	_releaseExecutable.SetCallback([this](NetError, DWORD, void*)
+	_releaseExecutable.SetCallback([this](NetError, DWORD)
 	{
 		_owner->_onDisconnect(GetSessionId(), GetErr());
 		Reset();

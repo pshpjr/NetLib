@@ -115,7 +115,7 @@ psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers, Executable& exe
     if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
     {
         const auto error = NetError::FromNativeCode(WSAEINVAL);
-        executable.Execute(error, 0, nullptr);
+        executable.Execute(error, 0);
         return error;
     }
     if (WSASend(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, 0,
@@ -128,7 +128,7 @@ psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers, Executable& exe
         }
         // TODO: 지금은 Executor를 몰라서 동기 에러 발생시 바로 처리. 재귀 오버플로우 위험 있음.
         // 추후 Executor 받게 수정 후 post 하게 변경 예정.
-        executable.Execute(error, 0, nullptr);
+        executable.Execute(error, 0);
         return error;
     }
     return true;
@@ -141,7 +141,7 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers, Executable& exe
     if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
     {
         const auto error = NetError::FromNativeCode(WSAEINVAL);
-        executable.Execute(error, 0, nullptr);
+        executable.Execute(error, 0);
         return error;
     }
     if (WSARecv(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, &flags,
@@ -154,7 +154,7 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers, Executable& exe
         }
         // TODO: 지금은 Executor를 몰라서 동기 에러 발생시 바로 처리. 재귀 오버플로우 위험 있음.
         // 추후 Executor 받게 수정 후 post 하게 변경 예정.
-        executable.Execute(error, 0, nullptr);
+        executable.Execute(error, 0);
         return error;
     }
     return true;

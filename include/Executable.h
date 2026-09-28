@@ -12,7 +12,7 @@
 class Executable final
 {
 public:
-    using Callback = std::function<void(NetError, DWORD, void*)>;
+    using Callback = std::function<void(NetError, DWORD)>;
 
     enum class IoType
     {
@@ -40,9 +40,9 @@ public:
         _callback = std::move(callback);
     }
 
-    void Execute(NetError error, DWORD transferred, void* iocp)
+    void Execute(NetError error, DWORD transferred)
     {
-        _callback(error, transferred, iocp);
+        _callback(error, transferred);
     }
 
     void Clear()
