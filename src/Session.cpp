@@ -1,5 +1,6 @@
 #include "Profiler.h"
 #include "Session.h"
+#include "Buffer.h"
 
 #include <iostream>
 
@@ -344,27 +345,27 @@ void Session::RecvNotIncrease()
 		Release(L"RecvReleaseSessionClosed");
 		return;
 	}
-	int bufferCount = 1;
-	WSABUF recvWsaBuf[2] = {};
+    size_t bufferCount = 1;
+	SocketRecvBuffer recvBuffers[2] = {};
 
-	recvWsaBuf[0].buf = _recvQ.GetRear();
-	recvWsaBuf[0].len = _recvQ.DirectEnqueueSize();
+	const auto recvSize = _recvQ.DirectEnqueueSize();
+	const auto freeSize = _recvQ.FreeSize();
+	SetSocketBuffer(recvBuffers[0], _recvQ.GetRear(), recvSize);
 
-	if (_recvQ.FreeSize() > recvWsaBuf[0].len)
+	if (freeSize > recvSize)
 	{
-		recvWsaBuf[1].buf = _recvQ.GetBuffer();
-		recvWsaBuf[1].len = _recvQ.FreeSize() - recvWsaBuf[0].len;
+		SetSocketBuffer(recvBuffers[1], _recvQ.GetBuffer(), freeSize - recvSize);
 
 		bufferCount = 2;
 	}
 
-	ASSERT_CRASH(recvWsaBuf[0].len + recvWsaBuf[1].len != 0, "RecvBuffer is 0");
+	ASSERT_CRASH(freeSize != 0, "RecvBuffer is 0");
 
 	lastRecv = std::chrono::steady_clock::now();
 
 
 	auto beforeSessionId = _sessionId;
-	if (const auto recvResult = _socket.Recv(recvWsaBuf, bufferCount, _recvExecute);
+	if (const auto recvResult = _socket.Recv({recvBuffers, bufferCount}, _recvExecute);
 		recvResult.HasError())
 	{
 		const auto error = recvResult.Error();
@@ -475,8 +476,8 @@ void Session::RealSend()
 		return;
 	}
 
-	int sendPackets = 0;
-	WSABUF sendWsaBuf[MAX_SEND_COUNT] = {};
+	size_t sendPackets = 0;
+	SocketSendBuffer sendBuffers[MAX_SEND_COUNT] = {};
 
 	volatile auto queueSize = _sendQ.Size();
 	if (queueSize < 1)
@@ -485,7 +486,7 @@ void Session::RealSend()
 	}
 	while (sendPackets == 0)
 	{
-		for (int i = 0; i < MAX_SEND_COUNT; i++)
+		for (auto i = 0; i < MAX_SEND_COUNT; i++)
 		{
 			SendBufferImpl* buffer;
 			volatile auto result = _sendQ.Dequeue(buffer);
@@ -506,16 +507,11 @@ void Session::RealSend()
 				buffer->WriteLanHeader();
 			}
 
-			sendWsaBuf[i].buf = buffer->GetHead();
-			sendWsaBuf[i].len = buffer->SendDataSize();
+			const auto bufferSize = buffer->SendDataSize();
+			SetSocketBuffer(sendBuffers[i], buffer->GetHead(), bufferSize);
 
-			ASSERT_CRASH(sendWsaBuf[i].len > 0, "Out of Case");
+			ASSERT_CRASH(bufferSize > 0, "Out of Case");
 		}
-	}
-	int sendSize = 0;
-	for (int i = 0; i < sendPackets; i++)
-	{
-		sendSize += sendWsaBuf[i].len;
 	}
 
 	_needCheckSendTimeout = true;
@@ -523,7 +519,7 @@ void Session::RealSend()
 
 	_dataNotSend = sendPackets;
 
-	_socket.Send(sendWsaBuf, sendPackets, _postSendExecute);
+	_socket.Send({sendBuffers, sendPackets}, _postSendExecute);
 }
 
 // Timeout

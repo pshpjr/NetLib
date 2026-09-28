@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "BuildOption.h"
+#include "Buffer.h"
 #include "SocketTypes.h"
 #include "Types.h"
 #include "Result.h"
@@ -45,8 +46,8 @@ public:
     // Pending is an error result; retain the I/O reference until completion.
     //  executable은 추후 socket 생성자에서 executor 받으면 제거 할 예정. 그 때는 executable을 소켓이 가지게 수정한다. 
     //  지금은 executor 개념이 없어 socket 내부에 넣을 수 없다. 
-    psh::Result<NetError> Send(LPWSABUF buf, DWORD bufCount, Executable& executable) const;
-    psh::Result<NetError> Recv(LPWSABUF buf, DWORD bufCount, Executable& executable) const;
+    psh::Result<NetError> Send(SocketSendBufferSpan buffers, Executable& executable) const;
+    psh::Result<NetError> Recv(SocketRecvBufferSpan buffers, Executable& executable) const;
 
     NetError LastError();
     psh::Result<NetError> SetLinger(bool on) const;

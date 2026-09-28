@@ -3,6 +3,7 @@
 #include "TLSPool.h"
 
 #include <atomic>
+#include <cstddef>
 #include <mutex>
 #include <stdexcept>
 #include <string_view>
@@ -133,9 +134,9 @@ private:
         isEncrypt = 0;
     }
 
-    ULONG SendDataSize() const
+    std::size_t SendDataSize() const
     {
-        return static_cast<ULONG>(_rear - _head);
+        return static_cast<std::size_t>(_rear - _head);
     }
 
     char* GetFront() const

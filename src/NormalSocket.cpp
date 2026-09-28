@@ -1,6 +1,7 @@
 ﻿#include "NormalSocket.h"
 
 #include <WS2tcpip.h>
+#include <limits>
 
 #include "Macro.h"
 #include "Socket.h"
@@ -108,10 +109,17 @@ psh::Result<NetError> Socket::Close()
     return true;
 }
 
-psh::Result<NetError> Socket::Send(const LPWSABUF buf, const DWORD bufCount, Executable& executable) const
+psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers, Executable& executable) const
 {
     executable.Clear();
-    if (WSASend(_socket, buf, bufCount, nullptr, 0, executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
+    if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
+    {
+        const auto error = NetError::FromNativeCode(WSAEINVAL);
+        executable.Execute(error, 0, nullptr);
+        return error;
+    }
+    if (WSASend(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, 0,
+                executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
     {
         const auto error = NetError::FromNativeCode(WSAGetLastError());
         if (error == NetErrc::Pending)
@@ -126,11 +134,18 @@ psh::Result<NetError> Socket::Send(const LPWSABUF buf, const DWORD bufCount, Exe
     return true;
 }
 
-psh::Result<NetError> Socket::Recv(const LPWSABUF buf, const DWORD bufCount, Executable& executable) const
+psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers, Executable& executable) const
 {
     DWORD flags = 0;
     executable.Clear();
-    if (WSARecv(_socket, buf, bufCount, nullptr, &flags, executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
+    if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
+    {
+        const auto error = NetError::FromNativeCode(WSAEINVAL);
+        executable.Execute(error, 0, nullptr);
+        return error;
+    }
+    if (WSARecv(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, &flags,
+                executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
     {
         const auto error = NetError::FromNativeCode(WSAGetLastError());
         if (error == NetErrc::Pending)
