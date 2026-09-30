@@ -56,8 +56,6 @@ add_library(NetLib STATIC
         src/Utility.cpp
         src/WebHook.cpp
         src/stdafx.cpp
-        ThreadPool.cpp
-        ThreadPool.h
         "include/IOCP.h"
         "include/Container.h")
 
