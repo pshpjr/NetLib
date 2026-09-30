@@ -37,6 +37,37 @@ namespace psh::util
     void* TlsGet(TlsKey key);
 }
 
+namespace psh::util
+{
+    template <typename F>
+    class ScopeGuard
+    {
+    public:
+        explicit ScopeGuard(F&& fn) : fn_(std::forward<F>(fn)) {}
+        ~ScopeGuard() { fn_(); }
+
+        ScopeGuard(const ScopeGuard&) = delete;
+        ScopeGuard& operator=(const ScopeGuard&) = delete;
+    private:
+        F fn_;
+    };
+
+    struct ScopeGuardTag
+    {
+    };
+
+    template <typename F> auto operator+(ScopeGuardTag, F&& fn)
+    {
+        return ScopeGuard<std::decay_t<F>>(std::forward<F>(fn));
+    }
+
+}
+
+#define SCOPE_GUARD_CONCAT_IMPL(a, b) a##b
+#define SCOPE_GUARD_CONCAT(a, b) SCOPE_GUARD_CONCAT_IMPL(a, b)
+
+#define SCOPE_GUARD const auto SCOPE_GUARD_CONCAT(scope_guard_, __COUNTER__) = psh::util::ScopeGuardTag{} + [&]()
+
 #endif //UTILITY_H
 
 
