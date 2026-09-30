@@ -53,7 +53,9 @@ public:
 	// Connection
 	String GetIp() const;
 	psh::uint16 GetPort() const;
-	void SetSocket(const Socket& socket);
+	//  TODO: 범용 주소 타입 만들면 교체
+	SOCKADDR_IN GetAddress() const;
+	void SetSocket(Socket&& socket);
 	void SetConnect();
 	void Close();
 	void SetErr(const int errCode);

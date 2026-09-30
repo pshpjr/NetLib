@@ -2,6 +2,7 @@
 
 #include "BuildOption.h"
 #include "Buffer.h"
+#include "Executor.h"
 #include "SocketTypes.h"
 #include "Types.h"
 #include "Result.h"
@@ -17,14 +18,21 @@ class Socket : public SOCKET_CLASS
     friend class Session;
 
 public:
-    /**
-     * \brief 빈 소켓 만들기
-     */
+
     Socket();
 
-    ~Socket() = default;
+    explicit Socket(Executor& executor);
+    Socket(Executor& executor, SOCKET socket, SOCKADDR_IN address);
 
-    Socket(NativeHandle socket, SOCKADDR_IN address);
+    //  등록된 상태면 Close()를 호출한다.
+    ~Socket();
+
+    //  등록 상태를 소유하므로 복사할 수 없다.
+    Socket(const Socket& other) = delete;
+    Socket& operator=(const Socket& other) = delete;
+
+    Socket(Socket&& other) noexcept;
+    Socket& operator=(Socket&& other) noexcept;
 
     bool IsSameSubnet(const String& comp, char subnetMaskBits) const;
     static bool IsSameSubnet(const IN_ADDR& a, const IN_ADDR& b, char subnetMaskBits);
@@ -59,5 +67,10 @@ public:
     psh::uint16 GetPort() const;
 
 private:
+    //  _executor에 등록한다. 성공하면 _registered = true.
+    psh::Result<NetError> RegisterToExecutor();
+
+    Executor* _executor = nullptr;
+    bool _registered = false;
     NativeHandle _beforeSocket = InvalidSocket;
 };

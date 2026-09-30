@@ -61,9 +61,67 @@ Socket::Socket()
 }
 
 
-Socket::Socket(const SOCKET socket, const SOCKADDR_IN address)
-    : NormalSocket(socket, address)
+Socket::Socket(Executor& executor)
+    : Socket(executor, INVALID_SOCKET, {0})
 {
+}
+
+Socket::Socket(Executor& executor, const SOCKET socket, const SOCKADDR_IN address)
+    : NormalSocket(socket, address)
+    , _executor(&executor)
+{
+}
+
+Socket::~Socket()
+{
+    if (_registered)
+    {
+        Close();
+    }
+}
+
+Socket::Socket(Socket&& other) noexcept
+    : NormalSocket(other)
+    , _executor(other._executor)
+    , _registered(other._registered)
+    , _beforeSocket(other._beforeSocket)
+{
+    other._socket = INVALID_SOCKET;
+    other._executor = nullptr;
+    other._registered = false;
+}
+
+Socket& Socket::operator=(Socket&& other) noexcept
+{
+    if (this != &other)
+    {
+        if (_registered)
+        {
+            Close();
+        }
+        NormalSocket::operator=(other);
+        _executor = other._executor;
+        _registered = other._registered;
+        _beforeSocket = other._beforeSocket;
+
+        other._socket = INVALID_SOCKET;
+        other._executor = nullptr;
+        other._registered = false;
+    }
+    return *this;
+}
+
+psh::Result<NetError> Socket::RegisterToExecutor()
+{
+    if (_executor == nullptr)
+        return NetError::FromNativeCode(NetError::InvalidExecutorCode);
+
+    if (auto error = _executor->RegisterHandle(reinterpret_cast<HANDLE>(_socket));
+        error != NetErrc::None)
+        return error;
+
+    _registered = true;
+    return true;
 }
 
 bool Socket::IsSameSubnet(const String& comp, char subnetMaskBits) const
@@ -104,9 +162,19 @@ psh::Result<NetError> Socket::Close()
 {
     _beforeSocket = _socket;
     _socket = INVALID_SOCKET;
-    if (closesocket(_beforeSocket) == SOCKET_ERROR)
+    const int closeResult = closesocket(_beforeSocket);
+    const int closeError = closeResult == SOCKET_ERROR ? WSAGetLastError() : 0;
+
+    //  등록 해제는 closesocket 성공 여부와 관계없이 한 번만 한다.
+    if (_registered)
     {
-        return NetError::FromNativeCode(WSAGetLastError());
+        _registered = false;
+        _executor->UnregisterHandle();
+    }
+
+    if (closeResult == SOCKET_ERROR)
+    {
+        return NetError::FromNativeCode(closeError);
     }
     return true;
 }
@@ -123,14 +191,11 @@ psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers, Executable& exe
     if (WSASend(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, 0,
                 executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
     {
-        const auto error = NetError::FromNativeCode(WSAGetLastError());
+        auto error = NetError::FromNativeCode(WSAGetLastError());
         if (error == NetErrc::Pending)
-        {
             return error;
-        }
-        // TODO: 지금은 Executor를 몰라서 동기 에러 발생시 바로 처리. 재귀 오버플로우 위험 있음.
-        // 추후 Executor 받게 수정 후 post 하게 변경 예정.
-        executable.Execute(error, 0);
+
+        _executor->PostInternal(executable);
         return error;
     }
     return true;
@@ -142,7 +207,7 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers, Executable& exe
     executable.Clear();
     if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
     {
-        const auto error = NetError::FromNativeCode(WSAEINVAL);
+        auto error = NetError::FromNativeCode(WSAEINVAL);
         executable.Execute(error, 0);
         return error;
     }
@@ -154,9 +219,8 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers, Executable& exe
         {
             return error;
         }
-        // TODO: 지금은 Executor를 몰라서 동기 에러 발생시 바로 처리. 재귀 오버플로우 위험 있음.
-        // 추후 Executor 받게 수정 후 post 하게 변경 예정.
-        executable.Execute(error, 0);
+
+        _executor->PostInternal(executable);
         return error;
     }
     return true;
@@ -225,6 +289,17 @@ psh::Result<NetError> Socket::Init()
     {
         return NetError::FromNativeCode(WSAGetLastError());
     }
+
+    //  TODO: executor 전환 전 임시. executor를 받아 만든 소켓만 등록한다.
+    if (_executor != nullptr)
+    {
+        if (auto registerResult = RegisterToExecutor(); registerResult.HasError())
+        {
+            closesocket(_socket);
+            _socket = INVALID_SOCKET;
+            return registerResult.Error();
+        }
+    }
     return true;
 }
 
@@ -268,8 +343,20 @@ psh::Result<Socket, NetError> Socket::Accept() const
         return NetError::FromNativeCode(WSAGetLastError());
     }
 
-    return Socket(clientSocket, clientAddr);
+    auto accepted = Socket(*_executor, clientSocket, clientAddr);
+    //  TODO: executor 전환 전 임시. 리슨 소켓에 executor가 있을 때만 등록한다.
+    if (accepted._executor != nullptr)
+    {
+        if (auto registerResult = accepted.RegisterToExecutor(); registerResult.HasError())
+        {
+            accepted.Close();
+            return registerResult.Error();
+        }
+    }
+
+    return std::move(accepted);
 }
+
 
 psh::Result<NetError> Socket::Connect(const String& ip, psh::uint16 port)
 {

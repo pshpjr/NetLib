@@ -385,7 +385,7 @@ psh::Result<SessionID, NetError> IOCP::GetClientSession(const String& ip, const 
         return connectionResult.Error();
     }
 
-    _sessions[index].SetSocket(s);
+    _sessions[index].SetSocket(std::move(s));
 
     SessionID sessionId{};
 
@@ -800,7 +800,7 @@ void IOCP::AcceptThread()
             continue;
         }
 
-        Socket clientSocket = acceptResult.Value();
+        Socket clientSocket = std::move(acceptResult.Value());
         if (OnAccept(clientSocket.GetSockAddress()) == false)
         {
             //TODO: 여기서 cancleIO가 의미 없음.
@@ -832,13 +832,13 @@ void IOCP::AcceptThread()
 
         session.IncreaseRef(L"AcceptInc");
         session.SetSessionId(sessionID);
-        session.SetSocket(clientSocket);
+        session.SetSocket(std::move(clientSocket));
         session.RegisterIOCP(_iocp);
         session.SetNetSession(_staticKey);
         session.OffReleaseFlag();
 
         session._connect = true;
-        OnConnect(session.GetSessionId(), clientSocket.GetSockAddress());
+        OnConnect(session.GetSessionId(), session.GetAddress());
         session.RecvNotIncrease();
 
         ++_sessionCount;

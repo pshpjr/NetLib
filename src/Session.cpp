@@ -210,7 +210,7 @@ Session::Session(Socket socket, SessionID sessionId, IOCP& owner)
     : Session()
 {
     _sessionId = sessionId;
-    _socket = socket;
+    _socket = std::move(socket);
     _owner = &owner;
 }
 
@@ -236,9 +236,14 @@ psh::uint16 Session::GetPort() const
 	return _socket.GetPort();
 }
 
-void Session::SetSocket(const Socket& socket)
+SOCKADDR_IN Session::GetAddress() const
 {
-	_socket = socket;
+	return _socket.GetSockAddress();
+}
+
+void Session::SetSocket(Socket&& socket)
+{
+	_socket = std::move(socket);
 }
 
 void Session::SetConnect()
