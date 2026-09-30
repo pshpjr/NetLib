@@ -55,14 +55,19 @@ public:
         return _overlapped.Get();
     }
 
+    IoType GetIoType()
+    {
+        return _type;
+    }
+
+    const std::wstring& GetIoTypeStr()
+    {
+        return ioTypeToStr[static_cast<char>(_type)];
+    }
+
     static Executable* GetExecutable(OVERLAPPED* overlap)
     {
         return overlap ? reinterpret_cast<OverlappedIO*>(overlap)->Owner() : nullptr;
-    }
-
-    static const std::wstring& GetIoType(const Executable& executable)
-    {
-        return ioTypeToStr[static_cast<char>(executable._type)];
     }
 private:
 

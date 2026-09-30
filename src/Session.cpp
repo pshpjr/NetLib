@@ -39,7 +39,7 @@ Session::Session()
 			using namespace std::chrono;
 
 			const int errNo = error.NativeCode;
-			const auto* type = Executable::GetIoType(_recvExecute).c_str();
+            const auto* type = _recvExecute.GetIoTypeStr().c_str();
 			SetErr(error);
 
 			switch (error)
@@ -124,7 +124,7 @@ Session::Session()
 			using namespace std::chrono;
 
 			const int errNo = error.NativeCode;
-			const auto* type = Executable::GetIoType(_postSendExecute).c_str();
+            const auto* type = _postSendExecute.GetIoTypeStr().c_str();
 			SetErr(error);
 
 			switch (error)
