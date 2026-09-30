@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.28)
 
 # 프로젝트 설정
 project(NetLib)
-# C++ 표준 설정
-set(CMAKE_CXX_STANDARD 20)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     add_compile_options(-translateInclude)
@@ -17,6 +15,8 @@ add_compile_definitions(_UNICODE UNICODE)
 
 # PDB 출력 경로 설정
 set(CMAKE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/")
+
+
 
 # 소스 파일 추가
 add_library(NetLib STATIC
@@ -56,8 +56,13 @@ add_library(NetLib STATIC
         src/Utility.cpp
         src/WebHook.cpp
         src/stdafx.cpp
-        "include/IOCP.h"
-        "include/Container.h")
+)
+
+# C++ 표준 설정
+target_compile_features(NetLib PUBLIC cxx_std_23)
+
+# 헤더 파일 추가
+target_include_directories(NetLib PUBLIC include)
 
 # 빌드 타입에 따른 매크로 정의
 if (CMAKE_CONFIGURATION_TYPES)
