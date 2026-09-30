@@ -55,6 +55,7 @@ add_library(NetLib STATIC
         src/TLSPool.cpp
         src/Utility.cpp
         src/WebHook.cpp
+        src/WindowsExecutor.cpp
         src/stdafx.cpp
 )
 
