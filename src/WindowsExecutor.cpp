@@ -128,3 +128,26 @@ bool WindowsExecutor::Post(std::function<void()> func)
     executable.release();
     return true;
 }
+
+NetError WindowsExecutor::RegisterHandle(HANDLE handle)
+{
+    if (state_.load() != State::Running)
+        return NetError::FromNativeCode(NetError::InvalidExecutorCode);
+
+    if (CreateIoCompletionPort(handle, iocpHandle_, 0, 0) == nullptr)
+        return NetError::FromNativeCode(static_cast<int>(GetLastError()));
+
+    return {};
+}
+
+void WindowsExecutor::UnregisterHandle()
+{
+    //  TODO: 남은 일 개수 기반 종료 판정 추가
+}
+
+void WindowsExecutor::PostInternal(Executable& executable) const
+{
+    //  세션은 executor를 stop 한 후에도 postRelease 같은 걸 iocp에 post 함. 
+    //  외부 노출용 post는 stop 이후 안 받지만, 내부적으로는 상관 없이 push 해줘야 함. 
+    PostQueuedCompletionStatus(iocpHandle_, 0, 0, executable.GetOverlapped());
+}

@@ -1,13 +1,20 @@
 ﻿#pragma once
 
 #include "MyWindows.h"
+#include "SocketTypes.h"
 #include "Types.h"
 
 #include <atomic>
 #include <functional>
 
+class Executable;
+
 class WindowsExecutor
 {
+    //  RegisterHandle / UnregisterHandle / PostInternal은 라이브러리 내부 전용이다.
+    friend class Socket;
+    friend class IOCP;
+
 public:
     WindowsExecutor();
     WindowsExecutor(int maxConcurrent);
@@ -37,6 +44,13 @@ private:
         Stopping,
         Stopped
     };
+
+    //  ---- 라이브러리 내부 전용 (Socket) ----
+    //  핸들을 executor에 연결한다. Stop 이후면 InvalidExecutor 에러를 리턴한다.
+    NetError RegisterHandle(HANDLE handle);
+    void UnregisterHandle();
+
+    void PostInternal(Executable& executable) const;
 
     HANDLE iocpHandle_ = INVALID_HANDLE_VALUE;
     //  Stop이 불리면 Stopping이 된다. 
