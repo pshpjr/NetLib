@@ -76,11 +76,11 @@ void WindowsExecutor::Run()
         if (executable->GetIoType() == Executable::IoType::Custom)
         {
             std::unique_ptr<Executable> owned(executable);
-            owned->Execute(error, transferred);
+            ExecuteNoThrow(*owned, error, transferred);
         }
         else
         {
-            executable->Execute(error, transferred);
+            ExecuteNoThrow(*executable, error, transferred);
         }
     }
 
@@ -150,4 +150,20 @@ void WindowsExecutor::PostInternal(Executable& executable) const
     //  세션은 executor를 stop 한 후에도 postRelease 같은 걸 iocp에 post 함. 
     //  외부 노출용 post는 stop 이후 안 받지만, 내부적으로는 상관 없이 push 해줘야 함. 
     PostQueuedCompletionStatus(iocpHandle_, 0, 0, executable.GetOverlapped());
+}
+
+void WindowsExecutor::ExecuteNoThrow(Executable& executable, NetError error, DWORD transferred)
+{
+    try
+    {
+        executable.Execute(error, transferred);
+    }
+    catch (const std::exception& e)
+    {
+        std::println("Executor callback exception: {}", e.what());
+    }
+    catch (...)
+    {
+        std::println("Executor callback unknown exception");
+    }
 }

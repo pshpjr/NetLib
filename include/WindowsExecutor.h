@@ -52,6 +52,9 @@ private:
 
     void PostInternal(Executable& executable) const;
 
+    //  콜백 예외를 잡아 워커 루프가 끊기지 않게 한다.
+    static void ExecuteNoThrow(Executable& executable, NetError error, DWORD transferred);
+
     HANDLE iocpHandle_ = INVALID_HANDLE_VALUE;
     //  Stop이 불리면 Stopping이 된다. 
     std::atomic<State> state_ = State::Running;
