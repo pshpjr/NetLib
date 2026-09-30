@@ -48,6 +48,8 @@ NetErrc NetError::ToNetErrc(int nativeCode)
     case WSAENOBUFS:
     case WSAEMFILE:
         return NetErrc::ResourceExhausted;
+    case NetError::InvalidExecutorCode:
+        return NetErrc::InvalidExecutor;
     default:
         return NetErrc::Unknown;
     }
