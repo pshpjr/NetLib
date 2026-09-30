@@ -68,12 +68,8 @@ bool IOCP::ClientInit(psh::uint16 maxRunningThread
                       , bool useTimeout)
 {
     _staticKey = staticKey;
-    _iocp = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, maxRunningThread);
-    if (_iocp == nullptr)
-    {
-        _listenSocket->Close();
-        return false;
-    }
+    //  TODO: maxRunningThread(IOCP 동시 실행 스레드 수)는 executor로 옮기면서 지금은 쓰이지 않는다.
+    static_cast<void>(maxRunningThread);
 
 
     for (int i = 0; i < workerThread; ++i)
@@ -188,7 +184,10 @@ void IOCP::Stop()
     _startSignal.store(true);
     _startSignal.notify_all();
     _listenSocket->Close();
-    PostQueuedCompletionStatus(_iocp, 0, 0, nullptr);
+
+    //  신규 Post와 소켓 등록을 먼저 막는다. 이후 accept된 소켓은 등록이 거부된다.
+    _executor.Stop();
+
     for (auto& thread : _threadArray)
     {
         if (thread.joinable() && thread.get_id() != std::this_thread::get_id()) thread.join();
@@ -365,7 +364,7 @@ psh::Result<SessionID, NetError> IOCP::GetClientSession(const String& ip, const 
     unsigned short index;
     GetFreeIndex(index);
 
-    Socket s;
+    Socket s(_executor);
     if (const auto initResult = s.Init(); initResult.HasError())
     {
         ReleaseFreeIndex(index);
@@ -396,7 +395,6 @@ psh::Result<SessionID, NetError> IOCP::GetClientSession(const String& ip, const 
 
     _sessions[index].IncreaseRef(L"AcceptInc");
     _sessions[index].SetSessionId(sessionId);
-    _sessions[index].RegisterIOCP(_iocp);
     _sessions[index].OffReleaseFlag();
     _sessions[index].SetConnect();
     _sessions[index].SetTimeout(0);
@@ -517,10 +515,9 @@ void IOCP::SetMaxPacketSize(const int size)
 			ThreadPool
 *****************************/
 
-void IOCP::PostExecutable(Executable* exe, const ULONG_PTR arg) const
+void IOCP::PostExecutable(Executable& exe) const
 {
-    constexpr int transferred = 2;
-    PostQueuedCompletionStatus(_iocp, transferred, arg, exe->GetOverlapped());
+    _executor.PostInternal(exe);
 }
 
 void IOCP::SetSessionStaticKey(const SessionID id, const char staticKey)
@@ -716,7 +713,7 @@ void IOCP::PrintMonitorString() const
 
 
 
-
+//  TODO: executor에 타이머 기능 추가하면 제거
 void IOCP::GroupThread()
 {
     psh::util::set_thread_name("IOCP Group Thread");
@@ -742,39 +739,8 @@ void IOCP::GroupThread()
 
 void IOCP::WorkerThread()
 {
-    psh::util::set_thread_name("IOCP Worker Thread");
-    PRO_THREAD("WORKER");
-    srand(GetCurrentThreadId());
-
-    while (true)
-    {
-        DWORD transferred = 0;
-        ULONG_PTR key = 0;
-        OVERLAPPED* overlap = nullptr;
-
-        const auto ret = GetQueuedCompletionStatus(
-            _iocp, &transferred, &key, &overlap, INFINITE);
-
-        if (transferred == 0 && overlap == nullptr)
-        {
-            PostQueuedCompletionStatus(_iocp, 0, 0, nullptr);
-            break;
-        }
-
-        NetError error{};
-
-        if (transferred == 0 && ret == 0)
-        {
-            error = NetError::FromNativeCode(WSAGetLastError());
-        }
-
-        Executable::GetExecutable(overlap)->Execute(error, transferred);
-    }
-
-    printf("WorkerThread End\n");
+    _executor.Run();
 }
-
-//iocp 에서 완료 통지가 올 때 처리는 소켓마다 달라진다
 
 void IOCP::AcceptThread()
 {
@@ -789,7 +755,8 @@ void IOCP::AcceptThread()
         {
             //accept 서버 닫으려고 중단한 경우.
             const auto error = acceptResult.Error();
-            if (error == NetErrc::Interrupted)
+            //  executor가 Stop되어 소켓 등록이 거부된 경우도 종료로 본다.
+            if (error == NetErrc::Interrupted || error == NetErrc::InvalidExecutor)
             {
                 break;
             }
@@ -833,7 +800,6 @@ void IOCP::AcceptThread()
         session.IncreaseRef(L"AcceptInc");
         session.SetSessionId(sessionID);
         session.SetSocket(std::move(clientSocket));
-        session.RegisterIOCP(_iocp);
         session.SetNetSession(_staticKey);
         session.OffReleaseFlag();
 
@@ -984,17 +950,16 @@ NormalIOCP::~NormalIOCP()
     _startSignal.store(true);
     _startSignal.notify_all();
     _listenSocket->Close();
-    if (_iocp && _iocp != INVALID_HANDLE_VALUE) PostQueuedCompletionStatus(_iocp, 0, 0, nullptr);
+    _executor.Stop();
     for (auto& thread : _threadArray)
     {
         if (thread.joinable()) thread.join();
     }
-    if (_iocp && _iocp != INVALID_HANDLE_VALUE) CloseHandle(_iocp);
 }
 
 
 NormalIOCP::NormalIOCP()
-    : _listenSocket{std::make_unique<Socket>()}
+    : _listenSocket{std::make_unique<Socket>(_executor)}
       , _port(0)
       , _freeIndex(std::make_unique<LockFreeStack<unsigned short>>())
       , _groupManager(nullptr)

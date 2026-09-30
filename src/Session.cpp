@@ -319,8 +319,7 @@ void Session::PostRelease()
 	ASSERT_CRASH(DebugRef == 0);
 	Write(-1, GroupID::InvalidGroupID(), L"PostRelease");
 #endif
-	PostQueuedCompletionStatus(_owner->_iocp, static_cast<DWORD>(-1), reinterpret_cast<ULONG_PTR>(this)
-	                           , _releaseExecutable.GetOverlapped());
+	_owner->PostExecutable(_releaseExecutable);
 }
 
 bool Session::Release(psh::LPCWSTR content, int type)
@@ -485,11 +484,6 @@ void Session::RecvNotIncrease()
 }
 
 // IOCP
-void Session::RegisterIOCP(const HANDLE iocpHandle)
-{
-	CreateIoCompletionPort(reinterpret_cast<HANDLE>(_socket._socket), iocpHandle, (ULONG_PTR)this, 0);
-}
-
 void Session::SetOwner(IOCP& owner)
 {
 	_owner = &owner;

@@ -79,7 +79,6 @@ public:
 	void RecvNotIncrease();
 
 	// IOCP
-	void RegisterIOCP(HANDLE iocpHandle);
 	void SetOwner(IOCP& owner);
 
 	// Timeout

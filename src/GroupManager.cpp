@@ -48,7 +48,7 @@ void GroupManager::Update()
         if (groupPtr->NeedUpdate())
         {
             groupPtr->_executable->Clear();
-            _owner->PostExecutable(groupPtr->_executable.get(), 0);
+            _owner->PostExecutable(*groupPtr->_executable);
         }
     }
     groupLock.unlock();

@@ -290,15 +290,11 @@ psh::Result<NetError> Socket::Init()
         return NetError::FromNativeCode(WSAGetLastError());
     }
 
-    //  TODO: executor 전환 전 임시. executor를 받아 만든 소켓만 등록한다.
-    if (_executor != nullptr)
+    if (auto registerResult = RegisterToExecutor(); registerResult.HasError())
     {
-        if (auto registerResult = RegisterToExecutor(); registerResult.HasError())
-        {
-            closesocket(_socket);
-            _socket = INVALID_SOCKET;
-            return registerResult.Error();
-        }
+        closesocket(_socket);
+        _socket = INVALID_SOCKET;
+        return registerResult.Error();
     }
     return true;
 }
@@ -344,14 +340,11 @@ psh::Result<Socket, NetError> Socket::Accept() const
     }
 
     auto accepted = Socket(*_executor, clientSocket, clientAddr);
-    //  TODO: executor 전환 전 임시. 리슨 소켓에 executor가 있을 때만 등록한다.
-    if (accepted._executor != nullptr)
+    accepted._executor = _executor;
+    if (auto registerResult = accepted.RegisterToExecutor(); registerResult.HasError())
     {
-        if (auto registerResult = accepted.RegisterToExecutor(); registerResult.HasError())
-        {
-            accepted.Close();
-            return registerResult.Error();
-        }
+        accepted.Close();
+        return registerResult.Error();
     }
 
     return std::move(accepted);

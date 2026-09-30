@@ -3,6 +3,7 @@
 #include "BuildOption.h"
 #include "GroupManager.h"
 #include "SessionTypes.h"
+#include "Executor.h"
 
 #include IOCP_HEADER
 
@@ -51,7 +52,7 @@ public:
     void SetMaxPacketSize(int size);
     void SetTimeout(SessionID sessionId, int timeoutMillisecond);
     void SetDefaultTimeout(unsigned int timeoutMillisecond);
-    void PostExecutable(Executable* exe, ULONG_PTR arg) const;
+    void PostExecutable(Executable& exe) const;
 
     void SetSessionStaticKey(SessionID id, char staticKey);
     void HandleInput();
@@ -174,9 +175,6 @@ private:
     void AcceptThread();
     void MonitorThread();
     void TimeoutThread();
-
-
-
 };
 
 

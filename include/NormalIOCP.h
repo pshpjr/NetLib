@@ -112,7 +112,9 @@ protected:
     *
     */
 
-    HANDLE _iocp = INVALID_HANDLE_VALUE;
+    //  TODO: executor 전환 전 임시. 소켓 생성에 필요한 executor를 IOCP 내부에 둔다.
+    //  _listenSocket보다 먼저 선언되어야 한다. (멤버 초기화 순서)
+    Executor _executor;
     std::unique_ptr<Socket> _listenSocket;
 
     std::vector<std::thread> _threadArray;
