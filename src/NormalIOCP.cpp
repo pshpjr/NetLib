@@ -243,17 +243,15 @@ void IOCP::SetDefaultTimeout(const unsigned int timeoutMillisecond)
 bool IOCP::SendPacket(const SessionID sessionId, const SendBuffer& sendBuffer, int type)
 {
     PRO_FUNCTION();
-    auto buffer = sendBuffer.getBuffer();
+
     const auto result = FindSession(sessionId, L"SendPacketInc");
     if (result == nullptr)
-    {
         return false;
-    }
 
     auto& session = *result;
     session.WriteContentLog(type);
 
-    ProcessBuffer(session, *buffer);
+    ProcessBuffer(session, *sendBuffer.getBuffer());
 
     /*TODO: 성능 비교하기.
      * 지금 버전이 반응성 더 낮고, CPU는 조금 덜 쓰리라 예상
@@ -261,7 +259,7 @@ bool IOCP::SendPacket(const SessionID sessionId, const SendBuffer& sendBuffer, i
     session.TrySend();
 
 
-    // if (session.CanSend())
+    // if (session.TryAcquireSendFlag())
     // {
 
     //     session._sendExecute.Clear();
@@ -274,7 +272,7 @@ bool IOCP::SendPacket(const SessionID sessionId, const SendBuffer& sendBuffer, i
     return true;
 }
 
-bool IOCP::SendPacketBlocking(SessionID sessionId, SendBuffer& sendBuffer, int type)
+bool IOCP::SendPacketDirect(SessionID sessionId, SendBuffer& sendBuffer, int type)
 {
     auto buffer = sendBuffer.getBuffer();
     const auto result = FindSession(sessionId, L"SendPacketInc");
@@ -319,7 +317,7 @@ bool IOCP::SendPacketBlocking(SessionID sessionId, SendBuffer& sendBuffer, int t
 //         }
 
 //         //session.TrySend();
-//         //if (session.CanSend())
+//         //if (session.TryAcquireSendFlag())
 //         //{
 //         //	session._sendExecute.Clear();
 //         //	PostQueuedCompletionStatus(_iocp, -1, (ULONG_PTR)&session, &session._sendExecute._overlapped);
@@ -327,7 +325,7 @@ bool IOCP::SendPacketBlocking(SessionID sessionId, SendBuffer& sendBuffer, int t
 //         dataSize = 0;
 //     }
 //     //session.TrySend();
-//     if (session.CanSend())
+//     if (session.TryAcquireSendFlag())
 //     {
 //         session._sendExecute.Clear();
 //         PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
@@ -572,7 +570,7 @@ psh::uint64 IOCP::GetSendTps() const
     return _sendTps;
 }
 
-psh::int16 IOCP::GetSessions() const
+psh::int16 IOCP::GetSessionCount() const
 {
     return _sessionCount;
 }
@@ -612,7 +610,7 @@ psh::uint64 IOCP::GetDisconnectPerSec() const
     return _disconnectps;
 }
 
-psh::uint32 IOCP::GetSegmentTimeout() const
+psh::uint32 IOCP::GetSemaphoreTimeoutCount() const
 {
     return _tcpSemaphoreTimeout;
 }
@@ -688,11 +686,11 @@ String IOCP::GetLibMonitorString() const
                        , L"TotalCPU", _cpuMonitor->ProcessTotal(), _cpuMonitor->ProcessorTotal()
                        , L"KernelCPU", _cpuMonitor->ProcessKernel(), _cpuMonitor->ProcessorKernel()
                        , L"UserCPU", _cpuMonitor->ProcessUser(), _cpuMonitor->ProcessorUser()
-                       , L"Sessions", GetSessions()
+                       , L"Sessions", GetSessionCount()
                        , L"Accept", GetAcceptCount(), L"AcceptTPS", GetAcceptTps()
                        , L"RecvTPS", GetRecvTps(), L"SendTPS", GetSendTps()
                        , L"Disconnect", GetDisconnectCount(), L"DisconnectTPS", GetDisconnectPerSec()
-                       , L"SegmentTimeout", GetSegmentTimeout(), L"Timeout", GetTimeoutCount()
+                       , L"SegmentTimeout", GetSemaphoreTimeoutCount(), L"Timeout", GetTimeoutCount()
                        , L"GSendPool", SendBufferImpl::_pool.GetGPoolSize(), L"GSendPoolEmpty"
                        , SendBufferImpl::_pool.GetGPoolEmptyCount()
                        //, L"GRecvPool", RecvBuffer::_pool.GetGPoolSize(), L"GRecvPoolEmpty", RecvBuffer::_pool.GetGPoolEmptyCount()

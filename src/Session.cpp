@@ -375,7 +375,7 @@ bool Session::EnqueueSendData(SendBufferImpl* buffer)
 
 void Session::TrySend()
 {
-	if (!CanSend())
+	if (!TryAcquireSendFlag())
 	{
 		return;
 	}
@@ -383,7 +383,7 @@ void Session::TrySend()
 	RealSend();
 }
 
-bool Session::CanSend()
+bool Session::TryAcquireSendFlag()
 {
 	PRO_FUNCTION();
 	if (_connect == false)
@@ -392,7 +392,6 @@ bool Session::CanSend()
 	}
 	while (true)
 	{
-		//이걸로 disconnect시 전송 을 방지할 수 있을까?
 		if (_refCount >= RELEASE_FLAG)
 		{
 			return false;
@@ -411,7 +410,6 @@ bool Session::CanSend()
 		if (_sendQ.Size() == 0)
 		{
 			_isSending.store(false);
-
 
 			continue;
 		}

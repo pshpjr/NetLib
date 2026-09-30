@@ -42,7 +42,7 @@ public:
     void Stop();
     void Wait();
     bool SendPacket(SessionID sessionId, const SendBuffer& sendBuffer, int type = 0);
-    bool SendPacketBlocking(SessionID sessionId, SendBuffer& sendBuffer, int type = 0);
+    bool SendPacketDirect(SessionID sessionId, SendBuffer& sendBuffer, int type = 0);
     // [[deprecated]]
     // bool SendPackets(SessionID sessionId, Vector<SendBuffer>& bufArr);
 
@@ -129,7 +129,7 @@ public:
     psh::uint64 GetAcceptTps() const;
     psh::uint64 GetRecvTps() const;
     psh::uint64 GetSendTps() const;
-    psh::int16 GetSessions() const;
+    psh::int16 GetSessionCount() const;
     psh::uint64 GetPacketPoolSize() const;
     psh::uint32 GetPacketPoolEmptyCount() const;
     psh::uint64 GetTimeoutCount() const;
@@ -137,7 +137,7 @@ public:
     static psh::uint32 GetPacketPoolReleaseCount();
     psh::uint64 GetDisconnectCount() const;
     psh::uint64 GetDisconnectPerSec() const;
-    psh::uint32 GetSegmentTimeout() const;
+    psh::uint32 GetSemaphoreTimeoutCount() const;
 
     size_t GetPageFaultCount() const;
     size_t GetPeakPMemSize() const;

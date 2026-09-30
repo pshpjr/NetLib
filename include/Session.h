@@ -72,7 +72,7 @@ public:
 	// Send
 	bool EnqueueSendData(SendBufferImpl* buffer);
 	void TrySend();
-	bool CanSend();
+	bool TryAcquireSendFlag();
 
 	// Receive
 	void RegisterRecv();
