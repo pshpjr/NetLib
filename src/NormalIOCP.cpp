@@ -812,7 +812,7 @@ void IOCP::AcceptThread()
 
 
         clientSocket.SetLinger(true);
-        _listenSocket->SetNoDelay(true);
+        clientSocket.SetNoDelay(true);
         //_listenSocket->SetSendBuffer(0);
 
         unsigned short sessionIndex;
