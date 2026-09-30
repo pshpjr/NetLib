@@ -188,6 +188,12 @@ void IOCP::Stop()
     //  신규 Post와 소켓 등록을 먼저 막는다. 이후 accept된 소켓은 등록이 거부된다.
     _executor.Stop();
 
+    //  TODO: SessionManager.closeAll()로 이동. 모든 세션을 끊어야 등록된 소켓이 해제되어 워커가 종료된다.
+    for (auto& session : _sessions)
+    {
+        DisconnectSession(session.GetSessionId());
+    }
+
     for (auto& thread : _threadArray)
     {
         if (thread.joinable() && thread.get_id() != std::this_thread::get_id()) thread.join();

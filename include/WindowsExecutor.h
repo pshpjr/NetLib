@@ -16,6 +16,22 @@ class WindowsExecutor
     friend class IOCP;
 
 public:
+    class WorkGuard
+    {
+    public:
+        WorkGuard(WindowsExecutor& executor)
+            : executor_(executor)
+        {
+            executor_.refCount_.fetch_add(1);
+        }
+
+        ~WorkGuard()
+        {
+            executor_.CompleteWork();
+        }
+        WindowsExecutor& executor_;
+    };
+
     WindowsExecutor();
     WindowsExecutor(int maxConcurrent);
     ~WindowsExecutor();
@@ -25,12 +41,13 @@ public:
     WindowsExecutor& operator=(const WindowsExecutor & other) = delete;
     WindowsExecutor& operator=(WindowsExecutor && other) = delete;
 
+	//  호출한 스레드를 워커로 쓴다. 종료 후 호출 시 바로 리턴 
     void Run();
 
     //  thread safe함
     bool Stop();
 
-    //  모든 워커가 종료될 때 까지 대기
+    //  모든 워커가 종료될 때 까지 대기. [주의] 어떤 워커도 Run() 호출하지 않은 상황에도 대기.
     void Wait();
 
     //  Stop 이후면 false
@@ -52,11 +69,24 @@ private:
 
     void PostInternal(Executable& executable) const;
 
+	//  refCount ++;
+    bool TryAddWork();
+    //  refCount_ --. 0 되면 아래 함수로 종료
+    void CompleteWork();
+    //  Stopping -> Stopped 교체 시
+    void TryConfirmStop();
+
     //  콜백 예외를 잡아 워커 루프가 끊기지 않게 한다.
     static void ExecuteNoThrow(Executable& executable, NetError error, DWORD transferred);
 
     HANDLE iocpHandle_ = INVALID_HANDLE_VALUE;
+
+    //    읽기 위주 변수
+
     //  Stop이 불리면 Stopping이 된다. 
     std::atomic<State> state_ = State::Running;
     std::atomic<psh::int32> runningThreadCounts_ = 0;
+
+    //    쓰기 위주 변수
+    alignas(64) std::atomic<psh::int64> refCount_ = 0;
 };

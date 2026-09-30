@@ -42,7 +42,7 @@ void WindowsExecutor::Run()
             runningThreadCounts_.notify_all();
     };
 
-    if (state_.load() != State::Running)
+    if (state_.load() == State::Stopped)
         return;
 
     psh::util::set_thread_name("IOCP Worker Thread");
@@ -75,8 +75,12 @@ void WindowsExecutor::Run()
         //  Custom 타입은 Post에서 만들고 Run에서 Release 한다. 
         if (executable->GetIoType() == Executable::IoType::Custom)
         {
-            std::unique_ptr<Executable> owned(executable);
-            ExecuteNoThrow(*owned, error, transferred);
+            {
+                std::unique_ptr<Executable> owned(executable);
+                ExecuteNoThrow(*owned, error, transferred);
+            }
+
+            CompleteWork();
         }
         else
         {
@@ -93,27 +97,33 @@ bool WindowsExecutor::Stop()
     if (!state_.compare_exchange_strong(expected, State::Stopping))
         return false;
 
-    PostQueuedCompletionStatus(iocpHandle_, 0, 0, nullptr);
+    if (refCount_.load() == 0)
+        TryConfirmStop();
+
     return true;
 }
 
 void WindowsExecutor::Wait()
 {
+    //  1. 종료 대기
+    auto state = state_.load();
+    while (state != State::Stopped)
+    {
+        state_.wait(state);
+        state = state_.load();
+    }
+
+    //  2. 모든 워커가 Run을 빠져나갈 때까지 대기
     auto count = runningThreadCounts_.load();
     while (count != 0)
     {
         runningThreadCounts_.wait(count);
         count = runningThreadCounts_.load();
     }
-
-    state_.store(State::Stopped);
 }
 
 bool WindowsExecutor::Post(std::function<void()> func)
 {
-    if (state_.load() != State::Running)
-        return false;
-
     auto executable = std::make_unique<Executable>(
         Executable::IoType::Custom,
          [func = std::move(func)](NetError, DWORD)
@@ -121,28 +131,38 @@ bool WindowsExecutor::Post(std::function<void()> func)
                func();
            });
 
-    if (!PostQueuedCompletionStatus(iocpHandle_, 0, 0, executable->GetOverlapped()))
+    if (!TryAddWork())
         return false;
 
-    //  pqcs 성공했다면 , Run()에서 소유권 받아서 release 한다. 
+    if (!PostQueuedCompletionStatus(iocpHandle_, 0, 0, executable->GetOverlapped()))
+    {
+        CompleteWork();
+        return false;
+    }
+
+    //  pqcs 성공했다면 , Run에서 소유권 받아서 release 한다. 
     executable.release();
     return true;
 }
 
 NetError WindowsExecutor::RegisterHandle(HANDLE handle)
 {
-    if (state_.load() != State::Running)
+    if (!TryAddWork())
         return NetError::FromNativeCode(NetError::InvalidExecutorCode);
 
     if (CreateIoCompletionPort(handle, iocpHandle_, 0, 0) == nullptr)
-        return NetError::FromNativeCode(static_cast<int>(GetLastError()));
+    {
+        const auto error = NetError::FromNativeCode(static_cast<int>(GetLastError()));
+        CompleteWork();
+        return error;
+    }
 
     return {};
 }
 
 void WindowsExecutor::UnregisterHandle()
 {
-    //  TODO: 남은 일 개수 기반 종료 판정 추가
+    CompleteWork();
 }
 
 void WindowsExecutor::PostInternal(Executable& executable) const
@@ -150,6 +170,33 @@ void WindowsExecutor::PostInternal(Executable& executable) const
     //  세션은 executor를 stop 한 후에도 postRelease 같은 걸 iocp에 post 함. 
     //  외부 노출용 post는 stop 이후 안 받지만, 내부적으로는 상관 없이 push 해줘야 함. 
     PostQueuedCompletionStatus(iocpHandle_, 0, 0, executable.GetOverlapped());
+}
+
+bool WindowsExecutor::TryAddWork()
+{
+    refCount_.fetch_add(1);
+    if (state_.load() != State::Running)
+    {
+        CompleteWork();
+        return false;
+    }
+    return true;
+}
+
+void WindowsExecutor::CompleteWork()
+{
+    if (refCount_.fetch_sub(1) == 1 && state_.load() == State::Stopping)
+        TryConfirmStop();
+}
+
+void WindowsExecutor::TryConfirmStop()
+{
+    auto expected = State::Stopping;
+    if (!state_.compare_exchange_strong(expected, State::Stopped))
+        return;
+
+    state_.notify_all();
+    PostQueuedCompletionStatus(iocpHandle_, 0, 0, nullptr);
 }
 
 void WindowsExecutor::ExecuteNoThrow(Executable& executable, NetError error, DWORD transferred)
