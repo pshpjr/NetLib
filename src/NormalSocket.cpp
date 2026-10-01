@@ -1,11 +1,11 @@
 ﻿#include "NormalSocket.h"
 
-#include <WS2tcpip.h>
-#include <limits>
-
+#include "Executable.h"
 #include "Macro.h"
 #include "Socket.h"
-#include "Executable.h"
+
+#include <WS2tcpip.h>
+#include <limits>
 
 NetError NetError::FromNativeCode(const int nativeCode)
 {
@@ -56,17 +56,17 @@ NetErrc NetError::ToNetErrc(int nativeCode)
 }
 
 Socket::Socket()
-    : NormalSocket(INVALID_SOCKET, {0})
+    : NormalSocket(InvalidSocket, {0})
 {
 }
 
 
 Socket::Socket(Executor& executor)
-    : Socket(executor, INVALID_SOCKET, {0})
+    : Socket(executor, InvalidSocket, {0})
 {
 }
 
-Socket::Socket(Executor& executor, const SOCKET socket, const SOCKADDR_IN address)
+Socket::Socket(Executor& executor, const NativeHandle socket, const SOCKADDR_IN address)
     : NormalSocket(socket, address)
     , _executor(&executor)
 {
@@ -86,7 +86,7 @@ Socket::Socket(Socket&& other) noexcept
     , _registered(other._registered)
     , _beforeSocket(other._beforeSocket)
 {
-    other._socket = INVALID_SOCKET;
+    other._socket = InvalidSocket;
     other._executor = nullptr;
     other._registered = false;
 }
@@ -104,7 +104,7 @@ Socket& Socket::operator=(Socket&& other) noexcept
         _registered = other._registered;
         _beforeSocket = other._beforeSocket;
 
-        other._socket = INVALID_SOCKET;
+        other._socket = InvalidSocket;
         other._executor = nullptr;
         other._registered = false;
     }
@@ -161,7 +161,7 @@ psh::Result<NetError> Socket::CancelIO() const
 psh::Result<NetError> Socket::Close()
 {
     _beforeSocket = _socket;
-    _socket = INVALID_SOCKET;
+    _socket = InvalidSocket;
     const int closeResult = closesocket(_beforeSocket);
     const int closeError = closeResult == SOCKET_ERROR ? WSAGetLastError() : 0;
 
@@ -216,9 +216,7 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers, Executable& exe
     {
         const auto error = NetError::FromNativeCode(WSAGetLastError());
         if (error == NetErrc::Pending)
-        {
             return error;
-        }
 
         _executor->PostInternal(executable);
         return error;
@@ -285,7 +283,7 @@ psh::uint16 Socket::GetPort() const
 psh::Result<NetError> Socket::Init()
 {
     _socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (_socket == INVALID_SOCKET)
+    if (_socket == InvalidSocket)
     {
         return NetError::FromNativeCode(WSAGetLastError());
     }
@@ -293,7 +291,7 @@ psh::Result<NetError> Socket::Init()
     if (auto registerResult = RegisterToExecutor(); registerResult.HasError())
     {
         closesocket(_socket);
-        _socket = INVALID_SOCKET;
+        _socket = InvalidSocket;
         return registerResult.Error();
     }
     return true;
@@ -301,7 +299,7 @@ psh::Result<NetError> Socket::Init()
 
 bool Socket::IsValid() const
 {
-    return _socket != INVALID_SOCKET;
+    return _socket != InvalidSocket;
 }
 
 
@@ -333,8 +331,8 @@ psh::Result<Socket, NetError> Socket::Accept() const
     SOCKADDR_IN clientAddr = {};
     int len = sizeof(SOCKADDR);
 
-    SOCKET clientSocket = accept(_socket, (SOCKADDR*)&clientAddr, &len);
-    if (clientSocket == INVALID_SOCKET)
+    NativeHandle clientSocket = accept(_socket, (SOCKADDR*)&clientAddr, &len);
+    if (clientSocket == InvalidSocket)
     {
         return NetError::FromNativeCode(WSAGetLastError());
     }

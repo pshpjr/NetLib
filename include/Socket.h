@@ -46,14 +46,9 @@ public:
     psh::Result<NetError> Close();
     static IN_ADDR Ip2Address(const psh::WCHAR* ip);
 
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <returns>이상 없으면 0, 아니면 에러코드</returns>
+    //  이상 없으면 0, 아니면 에러코드
     bool IsValid() const;
     // Pending is an error result; retain the I/O reference until completion.
-    //  executable은 추후 socket 생성자에서 executor 받으면 제거 할 예정. 그 때는 executable을 소켓이 가지게 수정한다. 
-    //  지금은 executor 개념이 없어 socket 내부에 넣을 수 없다. 
     psh::Result<NetError> Send(SocketSendBufferSpan buffers, Executable& executable) const;
     psh::Result<NetError> Recv(SocketRecvBufferSpan buffers, Executable& executable) const;
 

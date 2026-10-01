@@ -3,9 +3,6 @@
 
 #include <atomic>
 #include <chrono>
-#ifdef NETLIB_USE_SCQ_SEND_QUEUE
-#include "SCQ.h"
-#endif
 #include "GroupTypes.h"
 #include "LockQueue.h"
 #include "Macro.h"
@@ -152,11 +149,7 @@ private:
 #endif
 
 	// Send
-#ifdef NETLIB_USE_SCQ_SEND_QUEUE
-	SCQ<SendBufferImpl*, MAX_SEND_COUNT> _sendQ{};
-#else
-	LockFreeFixedQueue<SendBufferImpl*, MAX_SEND_COUNT> _sendQ{};
-#endif
+    LockFreeFixedQueue<SendBufferImpl*, MAX_SEND_COUNT> _sendQ{};
 	//TlsLockFreeQueue<SendBufferImpl*> _sendQ;
 	SendBufferImpl* _sendingQ[MAX_SEND_COUNT];
 	std::atomic<bool> _isSending = false;
@@ -166,7 +159,6 @@ private:
 	IOCP* _owner;
 	Executable& _recvExecute;
 	Executable& _postSendExecute;
-	// Executable& _sendExecute;
 	Executable& _releaseExecutable;
 
 	// Receive
