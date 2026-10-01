@@ -62,7 +62,7 @@ psh::uint16 Session::GetPort() const
 	return _socket.GetPort();
 }
 
-SOCKADDR_IN Session::GetAddress() const
+SockAddr Session::GetAddress() const
 {
 	return _socket.GetSockAddress();
 }

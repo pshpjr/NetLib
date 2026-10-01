@@ -9,8 +9,7 @@
 #include <type_traits>
 #include <utility>
 
-#include <WinSock2.h>
-#include <Windows.h>
+#include "MyWindows.h"
 #include "SocketTypes.h"
 
 class Executable final

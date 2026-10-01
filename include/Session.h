@@ -50,8 +50,7 @@ public:
 	// Connection
 	String GetIp() const;
 	psh::uint16 GetPort() const;
-	//  TODO: 범용 주소 타입 만들면 교체
-	SOCKADDR_IN GetAddress() const;
+	SockAddr GetAddress() const;
 	void SetSocket(Socket&& socket);
 	void SetConnect();
 	void Close();

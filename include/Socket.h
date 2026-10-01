@@ -26,7 +26,7 @@ public:
     Socket();
 
     explicit Socket(Executor& executor);
-    Socket(Executor& executor, SOCKET socket, SOCKADDR_IN address);
+    Socket(Executor& executor, NativeHandle socket, SockAddr address);
 
     //  등록된 상태면 Close()를 호출한다.
     ~Socket();
@@ -38,9 +38,6 @@ public:
     Socket(Socket&& other) noexcept;
     Socket& operator=(Socket&& other) noexcept;
 
-    bool IsSameSubnet(const String& comp, char subnetMaskBits) const;
-    static bool IsSameSubnet(const IN_ADDR& a, const IN_ADDR& b, char subnetMaskBits);
-
     psh::Result<NetError> Init();
     psh::Result<NetError> Bind(const String& ip, psh::uint16 port);
     psh::Result<NetError> Listen(int backlog) const;
@@ -48,7 +45,6 @@ public:
     psh::Result<NetError> Connect(const String& ip, psh::uint16 port);
     psh::Result<NetError> CancelIO() const;
     psh::Result<NetError> Close();
-    static IN_ADDR Ip2Address(const psh::WCHAR* ip);
 
     using IoCallback = std::function<void(NetError, std::size_t)>;
 
@@ -66,7 +62,7 @@ public:
     psh::Result<NetError> SetNoDelay(bool on) const;
     psh::Result<NetError> SetSendBuffer(int size) const;
 
-    SOCKADDR_IN GetSockAddress() const;
+    SockAddr GetSockAddress() const;
     String GetIp() const;
     psh::uint16 GetPort() const;
 

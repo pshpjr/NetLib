@@ -45,6 +45,7 @@ add_library(NetLib STATIC
         src/SendBuffer.cpp
         src/Session.cpp
         src/SettingParser.cpp
+        src/SockAddr.cpp
         src/SingleThreadObjectPool.cpp
         src/SpinLock.cpp
         src/SpinLockPool.cpp

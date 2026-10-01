@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "MyWindows.h"
+#include "SockAddr.h"
 
 
 class NormalSocket
@@ -13,11 +14,11 @@ public:
     static constexpr NativeHandle InvalidSocket = -1;
 #endif
 
-    NormalSocket(const NativeHandle socket, const SOCKADDR_IN addr) : _sockAddr(addr)
+    NormalSocket(const NativeHandle socket, const SockAddr addr) : _sockAddr(addr)
                                                               , _socket(socket)
     {
     }
 
-    SOCKADDR_IN _sockAddr;
+    SockAddr _sockAddr;
     NativeHandle _socket;
 };

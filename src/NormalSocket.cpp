@@ -56,17 +56,17 @@ NetErrc NetError::ToNetErrc(int nativeCode)
 }
 
 Socket::Socket()
-    : NormalSocket(InvalidSocket, {0})
+    : NormalSocket(InvalidSocket, {})
 {
 }
 
 
 Socket::Socket(Executor& executor)
-    : Socket(executor, InvalidSocket, {0})
+    : Socket(executor, InvalidSocket, {})
 {
 }
 
-Socket::Socket(Executor& executor, const NativeHandle socket, const SOCKADDR_IN address)
+Socket::Socket(Executor& executor, const NativeHandle socket, const SockAddr address)
     : NormalSocket(socket, address)
     , _executor(&executor)
     , _sendExecutable(std::make_unique<Executable>(Executable::IoType::Send))
@@ -128,26 +128,6 @@ psh::Result<NetError> Socket::RegisterToExecutor()
 
     _registered = true;
     return true;
-}
-
-bool Socket::IsSameSubnet(const String& comp, char subnetMaskBits) const
-{
-    IN_ADDR compAddress;
-    InetPtonW(AF_INET, comp.c_str(), &compAddress);
-
-    return IsSameSubnet(compAddress, _sockAddr.sin_addr, subnetMaskBits);
-}
-
-bool Socket::IsSameSubnet(const IN_ADDR& a, const IN_ADDR& b, const char subnetMaskBits)
-{
-    ASSERT_CRASH(0 <= subnetMaskBits && subnetMaskBits <= 32, "subnetSizeError");
-    const unsigned long subnetMask = 0xFFFFFFFFull >> (32 - subnetMaskBits & 0xFFFFFFFF);
-
-    const unsigned long compMasked = a.S_un.S_addr & subnetMask;
-    const unsigned long tarMasked = b.S_un.S_addr & subnetMask;
-
-
-    return compMasked == tarMasked;
 }
 
 psh::Result<NetError> Socket::CancelIO() const
@@ -270,24 +250,19 @@ psh::Result<NetError> Socket::SetSendBuffer(const int size) const
 }
 
 
-SOCKADDR_IN Socket::GetSockAddress() const
+SockAddr Socket::GetSockAddress() const
 {
     return _sockAddr;
 }
 
 String Socket::GetIp() const
 {
-    WCHAR str[47];
-    InetNtopW(AF_INET, &_sockAddr.sin_addr, str, 47);
-
-    return String(str);
+    return _sockAddr.GetIp().ToWString();
 }
 
 psh::uint16 Socket::GetPort() const
 {
-    psh::uint16 result;
-    WSANtohs(_socket, _sockAddr.sin_port, &result);
-    return result;
+    return _sockAddr.GetPort();
 }
 
 psh::Result<NetError> Socket::Init()
@@ -315,12 +290,15 @@ bool Socket::IsValid() const
 
 psh::Result<NetError> Socket::Bind(const String& ip, psh::uint16 port)
 {
-    memset(&_sockAddr, 0, sizeof(_sockAddr));
-    _sockAddr.sin_family = AF_INET;
-    _sockAddr.sin_addr = Ip2Address(ip.c_str());
-    _sockAddr.sin_port = htons(port);
+    const auto parsedIp = Ip::Parse(ip);
+    if (!parsedIp.has_value())
+    {
+        return NetError::FromNativeCode(WSAEINVAL);
+    }
+    _sockAddr = SockAddr(*parsedIp, port);
+    const sockaddr_in native = _sockAddr.ToNative();
 
-    if (bind(_socket, reinterpret_cast<SOCKADDR*>(&_sockAddr), sizeof(_sockAddr)) == SOCKET_ERROR)
+    if (bind(_socket, reinterpret_cast<const sockaddr*>(&native), sizeof(native)) == SOCKET_ERROR)
     {
         return NetError::FromNativeCode(WSAGetLastError());
     }
@@ -338,16 +316,16 @@ psh::Result<NetError> Socket::Listen(const int backlog) const
 
 psh::Result<Socket, NetError> Socket::Accept() const
 {
-    SOCKADDR_IN clientAddr = {};
-    int len = sizeof(SOCKADDR);
+    sockaddr_in clientAddr = {};
+    int len = sizeof(clientAddr);
 
-    NativeHandle clientSocket = accept(_socket, (SOCKADDR*)&clientAddr, &len);
+    NativeHandle clientSocket = accept(_socket, reinterpret_cast<sockaddr*>(&clientAddr), &len);
     if (clientSocket == InvalidSocket)
     {
         return NetError::FromNativeCode(WSAGetLastError());
     }
 
-    auto accepted = Socket(*_executor, clientSocket, clientAddr);
+    auto accepted = Socket(*_executor, clientSocket, SockAddr(clientAddr));
     accepted._executor = _executor;
     if (auto registerResult = accepted.RegisterToExecutor(); registerResult.HasError())
     {
@@ -361,12 +339,15 @@ psh::Result<Socket, NetError> Socket::Accept() const
 
 psh::Result<NetError> Socket::Connect(const String& ip, psh::uint16 port)
 {
-    memset(&_sockAddr, 0, sizeof(_sockAddr));
-    _sockAddr.sin_family = AF_INET;
-    _sockAddr.sin_addr = Ip2Address(ip.c_str());
-    _sockAddr.sin_port = htons(port);
+    const auto parsedIp = Ip::Parse(ip);
+    if (!parsedIp.has_value())
+    {
+        return NetError::FromNativeCode(WSAEINVAL);
+    }
+    _sockAddr = SockAddr(*parsedIp, port);
+    const sockaddr_in native = _sockAddr.ToNative();
 
-    if (SOCKET_ERROR == connect(_socket, (SOCKADDR*)&_sockAddr, sizeof(_sockAddr)))
+    if (SOCKET_ERROR == connect(_socket, reinterpret_cast<const sockaddr*>(&native), sizeof(native)))
     {
         return NetError::FromNativeCode(WSAGetLastError());
     }
@@ -374,13 +355,6 @@ psh::Result<NetError> Socket::Connect(const String& ip, psh::uint16 port)
     return true;
 }
 
-
-IN_ADDR Socket::Ip2Address(const WCHAR* ip)
-{
-    IN_ADDR address{0};
-    InetPtonW(AF_INET, ip, &address);
-    return address;
-}
 
 void Socket::SetCallbacks(IoCallback recvCallback, IoCallback sendCallback )
 {

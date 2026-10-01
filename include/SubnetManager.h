@@ -13,11 +13,11 @@ class SubnetManager
 public:
     SubnetManager();
 
-    bool IsLan(const SockAddr_in& info);
+    bool IsLan(const SockAddr& info);
 
-    bool IsWan(const SockAddr_in& info);
+    bool IsWan(const SockAddr& info);
 
-    std::optional<SubnetInfo> FindMatchSubnet(const SockAddr_in info)
+    std::optional<SubnetInfo> FindMatchSubnet(const SockAddr info)
     {
         if (auto subnetResult = FindSubnet(_lanSubnet, info);
             subnetResult.has_value())
@@ -30,10 +30,10 @@ private:
     struct SubnetInfo
     {
         char subnetSize;
-        IN_ADDR address;
+        Ip address;
         String addressStr;
     };
-    std::optional<SubnetInfo> FindSubnet(Vector<SubnetInfo>& group, SockAddr_in info);
+    std::optional<SubnetInfo> FindSubnet(Vector<SubnetInfo>& group, SockAddr info);
 
     void LoadSubnets();
     void LoadSubnetGroup(String group, Vector<SubnetInfo>& container);

@@ -77,12 +77,12 @@ public:
     {
     }
 
-    virtual bool OnAccept(SockAddr_in)
+    virtual bool OnAccept(SockAddr)
     {
         return true;
     }
 
-    virtual void OnConnect(SessionID sessionId, const SockAddr_in& info)
+    virtual void OnConnect(SessionID sessionId, const SockAddr& info)
     {
     }
 

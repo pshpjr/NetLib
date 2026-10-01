@@ -1,5 +1,6 @@
 ﻿#include "SubnetManager.h"
-#include "Socket.h"
+#include "CoreGlobal.h"
+#include "Logger.h"
 #include "stdafx.h"
 
 
@@ -9,22 +10,22 @@ SubnetManager::SubnetManager()
     LoadSubnets();
 }
 
-bool SubnetManager::IsLan(const SockAddr_in& info)
+bool SubnetManager::IsLan(const SockAddr& info)
 {
     return FindSubnet(_lanSubnet, info).has_value();
 }
 
-bool SubnetManager::IsWan(const SockAddr_in& info)
+bool SubnetManager::IsWan(const SockAddr& info)
 {
     return FindSubnet(_wanSubnet, info).has_value();
 }
 
-std::optional<SubnetManager::SubnetInfo> SubnetManager::FindSubnet(Vector<SubnetInfo>& group, const SockAddr_in info)
+std::optional<SubnetManager::SubnetInfo> SubnetManager::FindSubnet(Vector<SubnetInfo>& group, const SockAddr info)
 {
     const auto result = std::ranges::find_if(group
         , [info](const SubnetInfo& data)
         {
-            return Socket::IsSameSubnet(data.address, info.sin_addr, data.subnetSize);
+            return data.address.IsSameSubnet(info.GetIp(), data.subnetSize);
         });
 
     if (result == group.end())
@@ -60,7 +61,14 @@ void SubnetManager::LoadSubnetGroup(String group, Vector<SubnetInfo>& container)
         _subnetParser.GetValue(subnetString + std::to_wstring(i), subnet);
         _subnetParser.GetValue(ipString + std::to_wstring(i), ip);
 
-        container.push_back({subnet, Socket::Ip2Address(ip.c_str()), ip});
+        const auto address = Ip::Parse(ip);
+        if (!address.has_value())
+        {
+            gLogger->Write(L"SubnetManager", Logger::LogLevel::Error, L"Invalid subnet ip : %s", ip.c_str());
+            continue;
+        }
+
+        container.push_back({subnet, *address, ip});
     }
 
     std::ranges::sort(container, [](const SubnetInfo& d1, const SubnetInfo& d2)
