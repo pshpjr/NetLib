@@ -120,7 +120,6 @@ private:
 
     bool NeedUpdate();
     void Update();
-    void Execute(IOCP* iocp) const;
     [[nodiscard]] bool hasJob() const;
 
     bool HandleJob();

@@ -298,12 +298,6 @@ void Group::MoveSession(const SessionID id, const GroupID dst) const
 	_owner->MoveSession(id, dst, false);
 }
 
-void Group::Execute(IOCP* iocp) const
-{
-	_executable->SetResult(NetError{}, static_cast<std::size_t>(Executable::IoType::Group));
-	_executable->Execute();
-}
-
 bool Group::hasJob() const
 {
 	return _jobs->Size() > 0;
