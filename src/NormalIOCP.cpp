@@ -1,14 +1,13 @@
 #include "NormalIOCP.h"
 #include "Utility.h"
 
-#include <synchapi.h>
 #include <chrono>
 #include <format>
 #include <iostream>
+#include <thread>
 #include <fmt/base.h>
 
 
-#include "MyWindows.h"
 #include "CpuUsage.h"
 #include "MemoryUsage.h"
 #include "Logger.h"
@@ -427,43 +426,6 @@ bool IOCP::IsValidSession(const SessionID id)
 }
 
 
-void IOCP::SetDisableClickAndClose()
-{
-    DWORD consoleModePrev;
-    const HANDLE handle = GetStdHandle(STD_INPUT_HANDLE);
-    GetConsoleMode(handle, &consoleModePrev);
-    SetConsoleMode(handle, consoleModePrev & ~ENABLE_QUICK_EDIT_MODE);
-
-    // get the handle to the console
-    const HWND consoleWindow = GetConsoleWindow();
-
-    // get handle to the System Menu
-    const HMENU systemMenu = GetSystemMenu(consoleWindow, 0);
-
-    // how many items are there?
-    const int itemCount = GetMenuItemCount(systemMenu);
-    int j = -1;
-    const auto buf = static_cast<WCHAR*>(malloc(256 * sizeof(WCHAR)));
-
-    for (int i = 0; i < itemCount; i++)
-    {
-        // find the one we want
-        GetMenuStringW(systemMenu, i, buf, 255, MF_BYPOSITION);
-        if (!wcscmp(buf, L"닫기(&C)"))
-        {
-            j = i;
-            break;
-        }
-    }
-
-    // if found, remove that menu item
-    if (j >= 0)
-    {
-        RemoveMenu(systemMenu, j, MF_BYPOSITION);
-    }
-    free(buf);
-}
-
 bool IOCP::DisconnectSession(const SessionID sessionId)
 {
     const auto result = FindSession(sessionId, L"DisconnectInc");
@@ -739,7 +701,7 @@ void IOCP::GroupThread()
         next += milliseconds(1);
         if (sleepTime.count() > 0)
         {
-            Sleep(static_cast<DWORD>(sleepTime.count()));
+            std::this_thread::sleep_for(sleepTime);
         }
     }
     printf("GroupThread End\n");
@@ -851,7 +813,7 @@ void IOCP::MonitorThread()
         next += 1s;
         if (sleepTime.count() > 0)
         {
-            Sleep(static_cast<DWORD>(sleepTime.count()));
+            std::this_thread::sleep_for(sleepTime);
         }
     }
     printf("MonitorThread End\n");
@@ -885,7 +847,7 @@ void IOCP::TimeoutThread()
         next += milliseconds(1000);
         if (sleepTime.count() > 0)
         {
-            Sleep(static_cast<DWORD>(sleepTime.count()));
+            std::this_thread::sleep_for(sleepTime);
         }
     }
     printf("TimeoutThread End\n");
