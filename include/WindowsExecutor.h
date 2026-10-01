@@ -77,7 +77,7 @@ private:
     void TryConfirmStop();
 
     //  콜백 예외를 잡아 워커 루프가 끊기지 않게 한다.
-    static void ExecuteNoThrow(Executable& executable, NetError error, DWORD transferred);
+    static void ExecuteNoThrow(Executable& executable);
 
     HANDLE iocpHandle_ = INVALID_HANDLE_VALUE;
 

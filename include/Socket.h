@@ -9,6 +9,7 @@
 
 #include SOCKET_HEADER
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 
@@ -49,7 +50,7 @@ public:
     psh::Result<NetError> Close();
     static IN_ADDR Ip2Address(const psh::WCHAR* ip);
 
-    using IoCallback = std::function<void(NetError, DWORD)>;
+    using IoCallback = std::function<void(NetError, std::size_t)>;
 
     //  이상 없으면 0, 아니면 에러코드
     bool IsValid() const;

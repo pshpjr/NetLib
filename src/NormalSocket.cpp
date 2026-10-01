@@ -191,7 +191,8 @@ psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers) const
     if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
     {
         const auto error = NetError::FromNativeCode(WSAEINVAL);
-        _sendExecutable->Execute(error, 0);
+        _sendExecutable->SetResult(error, 0);
+        _executor->PostInternal(*_sendExecutable);
         return error;
     }
     if (WSASend(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, 0,
@@ -201,6 +202,7 @@ psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers) const
         if (error == NetErrc::Pending)
             return error;
 
+        _sendExecutable->SetResult(error, 0);
         _executor->PostInternal(*_sendExecutable);
         return error;
     }
@@ -214,7 +216,8 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers) const
     if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
     {
         auto error = NetError::FromNativeCode(WSAEINVAL);
-        _recvExecutable->Execute(error, 0);
+        _recvExecutable->SetResult(error, 0);
+        _executor->PostInternal(*_recvExecutable);
         return error;
     }
     if (WSARecv(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, &flags,
@@ -224,6 +227,7 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers) const
         if (error == NetErrc::Pending)
             return error;
 
+        _recvExecutable->SetResult(error, 0);
         _executor->PostInternal(*_recvExecutable);
         return error;
     }

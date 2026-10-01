@@ -1,7 +1,11 @@
 #pragma once
 #include <array>
+#include <cassert>
+#include <cstddef>
 #include <functional>
+#include <optional>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -12,7 +16,7 @@
 class Executable final
 {
 public:
-    using Callback = std::function<void(NetError, DWORD)>;
+    using Callback = std::function<void(NetError, std::size_t)>;
 
     enum class IoType
     {
@@ -40,14 +44,30 @@ public:
         _callback = std::move(callback);
     }
 
-    void Execute(NetError error, DWORD transferred)
+    void SetResult(NetError error, std::size_t transferred)
     {
+        assert(!_result.has_value());
+        _result.emplace(error, transferred);
+    }
+
+    bool HasResult() const noexcept
+    {
+        return _result.has_value();
+    }
+
+    void Execute()
+    {
+        assert(_result.has_value());
+        const auto [error, transferred] = _result.value();
+        // The callback may register the next result on this executable.
+        _result.reset();
         _callback(error, transferred);
     }
 
     void Clear()
     {
         _overlapped.Clear();
+        _result.reset();
     }
 
     LPOVERLAPPED GetOverlapped()
@@ -115,4 +135,5 @@ private:
     IoType _type{IoType::Base};
     OverlappedIO _overlapped;
     Callback _callback;
+    std::optional<std::tuple<NetError, std::size_t>> _result;
 };

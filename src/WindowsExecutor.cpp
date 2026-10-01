@@ -56,6 +56,7 @@ void WindowsExecutor::Run()
         OVERLAPPED* overlap = nullptr;
 
         const auto ret = GetQueuedCompletionStatus(iocpHandle_, &transferred, &key, &overlap, INFINITE);
+        const auto error = ret ? NetError{} : NetError::FromNativeCode(static_cast<int>(GetLastError()));
 
         //  1. 종료 처리
         if (transferred == 0 && overlap == nullptr)
@@ -64,27 +65,25 @@ void WindowsExecutor::Run()
             break;
         }
 
-        NetError error{};
-
-        if (transferred == 0 && ret == 0)
-        {
-            error = NetError::FromNativeCode(WSAGetLastError());
-        }
-
         auto executable = Executable::GetExecutable(overlap);
+        // Immediate failures already carry their result through PostInternal.
+        if (!executable->HasResult())
+        {
+            executable->SetResult(error, static_cast<std::size_t>(transferred));
+        }
         //  Custom 타입은 Post에서 만들고 Run에서 Release 한다. 
         if (executable->GetIoType() == Executable::IoType::Custom)
         {
             {
                 std::unique_ptr<Executable> owned(executable);
-                ExecuteNoThrow(*owned, error, transferred);
+                ExecuteNoThrow(*owned);
             }
 
             CompleteWork();
         }
         else
         {
-            ExecuteNoThrow(*executable, error, transferred);
+            ExecuteNoThrow(*executable);
         }
     }
 
@@ -126,7 +125,7 @@ bool WindowsExecutor::Post(std::function<void()> func)
 {
     auto executable = std::make_unique<Executable>(
         Executable::IoType::Custom,
-         [func = std::move(func)](NetError, DWORD)
+         [func = std::move(func)](NetError, std::size_t)
            {
                func();
            });
@@ -199,11 +198,11 @@ void WindowsExecutor::TryConfirmStop()
     PostQueuedCompletionStatus(iocpHandle_, 0, 0, nullptr);
 }
 
-void WindowsExecutor::ExecuteNoThrow(Executable& executable, NetError error, DWORD transferred)
+void WindowsExecutor::ExecuteNoThrow(Executable& executable)
 {
     try
     {
-        executable.Execute(error, transferred);
+        executable.Execute();
     }
     catch (const std::exception& e)
     {

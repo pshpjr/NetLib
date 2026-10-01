@@ -23,7 +23,7 @@ Session::Session()
 	  , _owner(nullptr)
 	  , _releaseExecutable(*new Executable(Executable::IoType::Release))
 {
-	_releaseExecutable.SetCallback([this](NetError, DWORD)
+	_releaseExecutable.SetCallback([this](NetError, std::size_t)
 	{
 		_owner->_onDisconnect(GetSessionId(), GetErr());
 		Reset();
@@ -72,7 +72,7 @@ void Session::SetSocket(Socket&& socket)
 	_socket = std::move(socket);
 
 		_socket.SetCallbacks(
-        [this](NetError error, DWORD transferred)
+        [this](NetError error, std::size_t transferred)
         {
             if (error == NetErrc::None && transferred == 0)
             {
@@ -151,7 +151,7 @@ void Session::SetSocket(Socket&& socket)
             RecvNotIncrease();
         }
 		,
-        [this](NetError error, DWORD transferred)
+        [this](NetError error, std::size_t transferred)
         {
             if (error == NetErrc::None && transferred == 0)
             {

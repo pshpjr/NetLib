@@ -16,7 +16,7 @@ Group::Group()
 	: _iocp(nullptr), _groupLogger(std::make_unique<Logger>(
 		  L"GroupLogger", Logger::LogLevel::Debug)),
 	  _executable(std::make_unique<Executable>(Executable::IoType::Group,
-		  [this](NetError, DWORD) { Update(); })),
+		  [this](NetError, std::size_t) { Update(); })),
 	  _prevUpdate(std::chrono::steady_clock::now()),
 	  _nextUpdate(_prevUpdate + std::chrono::milliseconds(_loopMs)),
 	  _jobs(std::make_unique<LockFreeFixedQueue<GroupJob, 8192>>()),
@@ -304,7 +304,8 @@ void Group::MoveSession(const SessionID id, const GroupID dst) const
 
 void Group::Execute(IOCP* iocp) const
 {
-	_executable->Execute(NetError{}, static_cast<int>(Executable::IoType::Group));
+	_executable->SetResult(NetError{}, static_cast<std::size_t>(Executable::IoType::Group));
+	_executable->Execute();
 }
 
 bool Group::hasJob() const
