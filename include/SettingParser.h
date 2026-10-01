@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <optional>
 
+#include <fmt/base.h>
+
 /*
 	파일 형식은 TOML이다.
 
@@ -50,7 +52,7 @@ public:
         auto findResult = GetValueImpl(name);
         if (!findResult.has_value())
         {
-            wprintf(L"Fail to Read Data : %s\n", name.c_str());
+            fmt::print("Fail to Read Data : {}\n", psh::util::WToS(name));
         }
         auto resultStr = findResult.value_or(defaultValue);
 
@@ -69,10 +71,6 @@ public:
         else if constexpr (std::is_same_v<T, std::string>)
         {
             value = psh::util::WToS(resultStr);
-        }
-        else if constexpr (std::is_same_v<T, psh::LPCWSTR>)
-        {
-            wcscpy_s(value, MAX_WORD_SIZE, resultStr.c_str());
         }
         else
         {

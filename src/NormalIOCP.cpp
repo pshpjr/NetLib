@@ -5,6 +5,7 @@
 #include <chrono>
 #include <format>
 #include <iostream>
+#include <fmt/base.h>
 
 
 #include "MyWindows.h"
@@ -57,7 +58,7 @@ bool IOCP::Init()
     _settingParser->GetValue(L"basic.workerThreads", _maxWorkerThread);
     _settingParser->GetValue(L"basic.staticKey", _staticKey);
 
-    printf("%ls %d\n", _ip.c_str(), _port);
+    fmt::print("{} {}\n", psh::util::WToS(_ip), _port);
     return Init(_ip, _port, _backlog, _maxNetThread, _maxWorkerThread, _staticKey);
 }
 
@@ -709,9 +710,7 @@ String IOCP::GetLibMonitorString() const
 
 void IOCP::PrintMonitorString() const
 {
-    const auto tmpS = GetLibMonitorString();
-
-    wprintf_s(tmpS.c_str());
+    fmt::print("{}", psh::util::WToS(GetLibMonitorString()));
 }
 
 
@@ -965,6 +964,7 @@ NormalIOCP::~NormalIOCP()
     {
         if (thread.joinable()) thread.join();
     }
+    Socket::CleanupPlatform();
 }
 
 
