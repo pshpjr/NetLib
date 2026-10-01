@@ -1,4 +1,5 @@
 #include "NormalIOCP.h"
+#include "Utility.h"
 
 #include <synchapi.h>
 #include <chrono>
@@ -343,7 +344,7 @@ void IOCP::ProcessBuffer(Session& session, SendBufferImpl& buffer)
     buffer.IncreaseRef(L"ProcessBuffInc");
     if (buffer.GetDataSize() == 0)
     {
-        __debugbreak();
+        psh::util::DebugBreak();
     }
     //버퍼가 가득 찰 정도면 끊는다.
     if (session.EnqueueSendData(&buffer) == false)
@@ -767,7 +768,7 @@ void IOCP::AcceptThread()
 
             printf("AcceptError %d", error.GetNativeCode());
             _acceptErrorCount++;
-            __debugbreak();
+            psh::util::DebugBreak();
             continue;
         }
 

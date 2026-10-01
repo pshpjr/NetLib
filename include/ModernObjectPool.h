@@ -3,6 +3,7 @@
 #ifndef MODERNOBJECTPOOL_H
 #define MODERNOBJECTPOOL_H
 
+#include "Utility.h"
 #include <Types.h>
 
 #include <iostream>
@@ -58,7 +59,7 @@ public:
         T* objPtr = reinterpret_cast<T*>(_pool.back().release());
         if (objPtr == nullptr)
         {
-            __debugbreak();
+            psh::util::DebugBreak();
         }
         _pool.pop_back();
         std::construct_at(objPtr, std::forward<Args>(args)...);
@@ -97,7 +98,7 @@ private:
             auto ptr = new storageType;
             if (ptr == nullptr)
             {
-                __debugbreak();
+                psh::util::DebugBreak();
             }
             _pool.emplace_back(ptr);
         }
@@ -109,7 +110,7 @@ private:
         {
             if (ptr == nullptr)
             {
-                __debugbreak();
+                psh::util::DebugBreak();
                 return false;
             }
         }

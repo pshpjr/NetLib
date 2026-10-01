@@ -49,7 +49,7 @@ public:
         buffer[tail & indexMask].data = std::move(data);
         if (buffer[tail & indexMask].isUsed.exchange(true) == true)
         {
-            __debugbreak();
+            psh::util::DebugBreak();
         }
         return true;
     }
@@ -76,7 +76,7 @@ public:
 
         if (buffer[head & indexMask].isUsed.exchange(false) == false)
         {
-            __debugbreak();
+            psh::util::DebugBreak();
         }
 
         return true;

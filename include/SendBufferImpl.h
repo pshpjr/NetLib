@@ -62,8 +62,6 @@ public:
 #ifdef SEND_DEBUG
 		auto index = ++debugIndex;
 		release_D[index % debugSize] = { refIncResult,content,0 };
-#else
-        UNREFERENCED_PARAMETER(content);
 #endif
 
         return refIncResult;
@@ -76,8 +74,6 @@ public:
 #ifdef SEND_DEBUG
 		auto index = ++debugIndex;
 		release_D[index % debugSize] = { refResult,content,0 };
-#else
-        UNREFERENCED_PARAMETER(content);
 #endif
 
         if (refResult == 0)
@@ -214,7 +210,7 @@ private:
 	//	for ( auto node : _pool.allocated )
 	//	{
 	//		if ( node->_data._refCount == 1 )
-	//			__debugbreak();
+	//			psh::util::DebugBreak();
 	//		int a = 0;
 	//	}
 	//}

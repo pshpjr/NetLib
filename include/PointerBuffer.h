@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Container.h"
+#include "Utility.h"
 
 #include <type_traits>
 template <typename T, int N>
@@ -15,7 +16,7 @@ public:
     {
         if (_rearIndex - _frontIndex == N)
         {
-            __debugbreak();
+            psh::util::trigger_debug_break();
         }
         _buffer[_rearIndex & INDEX_MASK] = value;
         ++_rearIndex;

@@ -1,20 +1,8 @@
 #pragma once
 #include <mutex>
 #include <shared_mutex>
-#ifdef _WIN32
-#include <intrin.h> // For __debugbreak()
-#else
-#include <signal.h>
-#endif
 
-inline void trigger_debug_break()
-{
-#ifdef _WIN32
-	__debugbreak(); // For Windows
-#else
-	raise(SIGTRAP); // For Unix-like systems
-#endif
-}
+#include "Utility.h"
 
 /*--------------------
 		DEBUG
@@ -27,7 +15,7 @@ inline void trigger_debug_break()
 #ifdef PSH_DEBUG
 #define CRASH(cause)								\
 	{																			\
-		trigger_debug_break();												\
+		psh::util::DebugBreak();												\
 	}
 
 #define ASSERT_CRASH(expr,cause)			\

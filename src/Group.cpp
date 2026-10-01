@@ -1,4 +1,5 @@
 #include "Group.h"
+#include "Utility.h"
 
 #include <memory>
 
@@ -147,7 +148,7 @@ bool Group::HandleJob()
 				// Handled");
 				if (_sessions.erase(job.sessionId) == 0)
 				{
-					__debugbreak();
+					psh::util::DebugBreak();
 				}
 				OnLeave(job.sessionId, job.errCode);
 
@@ -163,7 +164,7 @@ bool Group::HandleJob()
 				if (_sessions.erase(job.sessionId) == 0)
 				{
 					//
-					__debugbreak();
+					psh::util::DebugBreak();
 				}
 				OnLeave(job.sessionId, job.errCode);
 
@@ -255,23 +256,18 @@ void Group::OnCreate()
 
 void Group::OnUpdate(int milli)
 {
-	UNREFERENCED_PARAMETER(milli);
 }
 
 void Group::OnEnter(SessionID id)
 {
-	UNREFERENCED_PARAMETER(id);
 }
 
 void Group::OnLeave(SessionID id, int wsaErrCode)
 {
-	UNREFERENCED_PARAMETER(id);
 }
 
 void Group::OnRecv(SessionID id, RecvBuffer& recvBuffer)
 {
-	UNREFERENCED_PARAMETER(id);
-	UNREFERENCED_PARAMETER(recvBuffer);
 }
 
 GroupID Group::GetGroupID() const

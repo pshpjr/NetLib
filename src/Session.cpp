@@ -126,7 +126,7 @@ void Session::SetSocket(Socket&& socket)
                     break;
 
                 default:
-                    __debugbreak();
+                    psh::util::DebugBreak();
                     break;
                 }
 
@@ -205,7 +205,7 @@ void Session::SetSocket(Socket&& socket)
                     break;
 
                 default:
-                    __debugbreak();
+                    psh::util::DebugBreak();
                     break;
                 }
 
@@ -304,9 +304,6 @@ bool Session::Release(psh::LPCWSTR content, int type)
 
 #ifdef SESSION_DEBUG
 	Write(_refCount.load(), GroupID::InvalidGroupID(), content);
-#else
-	UNREFERENCED_PARAMETER(content);
-	UNREFERENCED_PARAMETER(type);
 #endif
 
 	if (refDecResult == 0)
@@ -546,7 +543,7 @@ void Session::RealSend()
 	volatile auto queueSize = _sendQ.Size();
 	if (queueSize < 1)
 	{
-		__debugbreak();
+		psh::util::DebugBreak();
 	}
 	while (sendPackets == 0)
 	{
@@ -629,8 +626,6 @@ void Session::WriteContentLog(unsigned int type)
 {
 #ifdef SESSION_DEBUG
 		Write(_refCount.load(), GroupID::InvalidGroupID(), L"SendContent");
-#else
-	UNREFERENCED_PARAMETER(type);
 #endif
 }
 

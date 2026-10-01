@@ -147,19 +147,11 @@ void CrashDump::SetHandler()
 void CrashDump::InvalidParamHandler(const wchar_t *expression, const wchar_t *function, const wchar_t *file
   , unsigned int line, uintptr_t pReserved)
 {
-    UNREFERENCED_PARAMETER(expression);
-    UNREFERENCED_PARAMETER(function);
-    UNREFERENCED_PARAMETER(file);
-    UNREFERENCED_PARAMETER(line);
-    UNREFERENCED_PARAMETER(pReserved);
     Crash();
 }
 
 int CrashDump::_custom_Report_hook(int reportType, char *message, int *returnValue)
 {
-    UNREFERENCED_PARAMETER(reportType);
-    UNREFERENCED_PARAMETER(message);
-    UNREFERENCED_PARAMETER(returnValue);
     Crash();
     return true;
 }

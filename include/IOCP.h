@@ -84,19 +84,14 @@ public:
 
     virtual void OnConnect(SessionID sessionId, const SockAddr_in& info)
     {
-        UNREFERENCED_PARAMETER(sessionId);
-        UNREFERENCED_PARAMETER(info);
     }
 
     virtual void OnDisconnect(SessionID sessionId, int wsaErrCode)
     {
-        UNREFERENCED_PARAMETER(sessionId);
     }
 
     virtual void OnRecvPacket(SessionID sessionId, RecvBuffer& buffer)
     {
-        UNREFERENCED_PARAMETER(sessionId);
-        UNREFERENCED_PARAMETER(buffer);
     }
 
     virtual void OnInit()
@@ -116,8 +111,6 @@ public:
     //무시하면 카운터가 초기화되고, 다시 타임아웃 시간 측정
     virtual void OnSessionTimeout(SessionID sessionId, timeoutInfo info)
     {
-        UNREFERENCED_PARAMETER(sessionId);
-        UNREFERENCED_PARAMETER(info);
     }
 
     virtual void OnMonitorRun()

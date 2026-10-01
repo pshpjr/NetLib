@@ -11,7 +11,10 @@
 
 #include <cstdint>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <intrin.h>
+#else
+#include <csignal>
 #include <pthread.h>
 #endif
 
@@ -21,6 +24,15 @@ namespace psh::util
     std::wstring SToW(std::string_view str);
 
     void set_thread_name(const char *threadName);
+
+    inline void DebugBreak()
+    {
+#ifdef _WIN32
+        __debugbreak();
+#else
+        std::raise(SIGTRAP);
+#endif
+    }
 }
 
 namespace psh::util

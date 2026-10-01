@@ -197,8 +197,6 @@ long Session::IncreaseRef(psh::LPCWSTR content)
 
 #ifdef SESSION_DEBUG
 	Write(_refCount.load(), GroupID::InvalidGroupID(), content);
-#else
-	UNREFERENCED_PARAMETER(content);
 #endif
 	return result;
 }

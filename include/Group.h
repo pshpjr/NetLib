@@ -75,7 +75,7 @@ public:
     //	auto index = ++debugArr[id.index].arrIndex;
 
     //	if (type == Leave && debugArr[id.index].arr[index - 1].id != id)
-    //		__debugbreak();
+    //		psh::util::DebugBreak();
 
     //	debugArr[id.index].arr[index].id = id;
     //	debugArr[id.index].arr[index].type = type;

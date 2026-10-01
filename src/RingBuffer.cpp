@@ -189,7 +189,7 @@ int RingBuffer::Dequeue(const int deqSize)
     //size 함수는 늘어나기만 함. if 이후 변경되어도 상관 없음. 
     if (deqSize > Size())
     {
-        __debugbreak();
+        psh::util::DebugBreak();
         size = Size();
     }
 
