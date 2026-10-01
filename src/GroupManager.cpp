@@ -3,7 +3,7 @@
 #include "IOCP.h"
 
 
-void GroupManager::MoveSession(const SessionID target, const GroupID dst, bool update)
+void GroupManager::MoveSession(const SessionID target, const GroupID dst)
 {
     const auto session = _owner->FindSession(target, L"MoveSession");
 
@@ -22,7 +22,7 @@ void GroupManager::MoveSession(const SessionID target, const GroupID dst, bool u
 #ifdef SESSION_DEBUG
 		session->Write(-1, src, L"MoveLeave");
 #endif
-        srcGroup->LeaveSession(session->GetSessionId(), update, session->GetErr());
+        srcGroup->LeaveSession(session->GetSessionId(), session->GetErr());
     }
     session->SetGroupID(dst);
     if (dst != BaseGroupID())
@@ -31,7 +31,7 @@ void GroupManager::MoveSession(const SessionID target, const GroupID dst, bool u
 #ifdef SESSION_DEBUG
 		session->Write(-1, dst, L"MoveEnter");
 #endif
-        dstGroup->EnterSession(session->GetSessionId(), update);
+        dstGroup->EnterSession(session->GetSessionId());
     }
     groupLock.unlock();
 
@@ -47,21 +47,20 @@ void GroupManager::Update()
     {
         if (groupPtr->NeedUpdate())
         {
-            groupPtr->_executable->Clear();
-            _owner->PostExecutable(*groupPtr->_executable);
+            groupPtr->RequestUpdate();
         }
     }
     groupLock.unlock();
 }
 
-bool GroupManager::OnRecv(SessionID sessionId, GroupID groupId, std::size_t transferred)
+void GroupManager::OnRecv(SessionID sessionId, GroupID groupId, std::size_t transferred)
 {
     //객체의 주소를 받아오고 나서 락을 해제해도 문제 x
     //해쉬맵에 데이터가 추가되면서 객체가 이동할 수 있으나 uniqueptr이 가리키는 원본 포인터는 변하지 않을 것.
     std::shared_lock groupLock(_groupLock);
     auto ptr = _groups[groupId].get();
     groupLock.unlock();
-    return ptr->Enqueue({Group::GroupJob::Recv, sessionId, 0, GroupID(0), transferred});
+    ptr->Enqueue({Group::GroupJob::Recv, sessionId, 0, GroupID(0), transferred});
 }
 
 void GroupManager::SessionDisconnected(Session* target)
@@ -76,7 +75,7 @@ void GroupManager::SessionDisconnected(Session* target)
 #ifdef SESSION_DEBUG
 		target->Write(-1, src, L"Disconnect Leave");
 #endif
-        srcGroup->LeaveSession(target->GetSessionId(), true, target->GetErr());
+        srcGroup->LeaveSession(target->GetSessionId(), target->GetErr());
     }
 
     groupLock.unlock();

@@ -87,8 +87,8 @@ public:
     //}
 protected:
     void MoveSession(SessionID id, GroupID dst) const;
-    void LeaveSession(SessionID id, bool update, int wsaErrCode);
-    void EnterSession(SessionID id, bool update);
+    void LeaveSession(SessionID id, int wsaErrCode);
+    void EnterSession(SessionID id);
     void SetLoopMs(int loopMS);
 
     [[nodiscard]] size_t Sessions() const;
@@ -116,10 +116,22 @@ private:
         GroupID dst = GroupID(0);
         std::size_t transferred{0};
     };
-    bool Enqueue(GroupJob job, bool update = true);
+    enum class UpdateState
+    {
+        Idle,
+        Scheduled,
+        Running,
+        //  실행 중에 업데이트 요청이 들어와 한 번 더 돌아야 하는 상태
+        RunningDirty
+    };
+
+    void Enqueue(GroupJob job);
 
     bool NeedUpdate();
+    //  Idle이면 업데이트를 post하고, 실행 중이면 한 번 더 돌도록 표시한다.
+    void RequestUpdate();
     void Update();
+    void Process();
     [[nodiscard]] bool hasJob() const;
 
     bool HandleJob();
@@ -139,7 +151,7 @@ private:
 
     // TlsLockFreeQueue<GroupJob> _jobs;
 
-    std::atomic_bool _isRun = false;
+    std::atomic<UpdateState> _updateState = UpdateState::Idle;
 
     GroupManager* _owner;
 

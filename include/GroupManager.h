@@ -19,12 +19,12 @@ public:
     GroupID CreateGroup(Args&&... args);
 
     //move 0이면 나가기. 
-    void MoveSession(SessionID target, GroupID dst, bool update = true);
+    void MoveSession(SessionID target, GroupID dst);
     void SessionDisconnected(Session* target);
 
     void Update();
 
-    bool OnRecv(SessionID sessionId, GroupID groupId, std::size_t transferred);
+    void OnRecv(SessionID sessionId, GroupID groupId, std::size_t transferred);
 
     static consteval GroupID BaseGroupID()
     {

@@ -52,7 +52,7 @@ psh::int32 Group::GetLeaveTps() const
 	return _leaveTps;
 };
 
-bool Group::Enqueue(GroupJob job, bool update)
+void Group::Enqueue(GroupJob job)
 {
 	{
 		// 그룹이 가득 찰 정도면 서버가 엄청 바쁜 거
@@ -62,12 +62,7 @@ bool Group::Enqueue(GroupJob job, bool update)
 			std::this_thread::yield();
 		}
 	}
-	if (update && _isRun == 0)
-	{
-		Update();
-		return true;
-	}
-	return false;
+	RequestUpdate();
 }
 
 bool Group::NeedUpdate()
@@ -75,14 +70,58 @@ bool Group::NeedUpdate()
 	return std::chrono::steady_clock::now() >= _nextUpdate;
 }
 
+void Group::RequestUpdate()
+{
+	auto state = _updateState.load();
+	while (true)
+	{
+		if (state == UpdateState::Scheduled || state == UpdateState::RunningDirty)
+		{
+			return;
+		}
+		
+		//  idle이면 scheduled로 바꾸고, running이면 runningDirty로 바꾼다
+		const auto next = state == UpdateState::Idle ? UpdateState::Scheduled : UpdateState::RunningDirty;
+		if (_updateState.compare_exchange_weak(state, next))
+		{
+			//  내가 scheduled로 바꿨을때만 post 한다. 
+			if (next == UpdateState::Scheduled)
+			{
+				_iocp->PostExecutable(*_executable);
+			}
+			return;
+		}
+	}
+}
+
 void Group::Update()
+{
+	auto expected = UpdateState::Scheduled;
+	if (!_updateState.compare_exchange_strong(expected, UpdateState::Running))
+	{
+		psh::util::DebugBreak();
+	}
+
+	while (true)
+	{
+		Process();
+
+		//  계속 running 상태면 아무도 추가하지 않았다. 
+		expected = UpdateState::Running;
+		if (_updateState.compare_exchange_strong(expected, UpdateState::Idle))
+		{
+			return;
+		}
+
+		//  dirty 상태면 running으로 돌리고 한번 더 돈다. 
+		_updateState.store(UpdateState::Running);
+	}
+}
+
+void Group::Process()
 {
 	using namespace std::chrono;
 	using namespace std::literals::chrono_literals;
-	if (_isRun.exchange(true))
-	{
-		return;
-	}
 	PRO_FRAME("Group HandleJob");
 
 	auto start = steady_clock::now();
@@ -117,7 +156,6 @@ void Group::Update()
 
 		_nextMonitor += 1s;
 	}
-	_isRun.store(false);
 }
 
 bool Group::HandleJob()
@@ -230,14 +268,14 @@ void Group::onRecvPacket(const Session& session, RecvBuffer& buffer)
 
 // 해당 세션이 언제 나갈지 모르는데 상관 없나?
 // 어짜피 동시에 처리되는 건 아니니까 상관 x.
-void Group::LeaveSession(const SessionID id, bool update, int wsaErrCode)
+void Group::LeaveSession(const SessionID id, int wsaErrCode)
 {
-	Enqueue({GroupJob::type::Leave, id, wsaErrCode}, update);
+	Enqueue({GroupJob::type::Leave, id, wsaErrCode});
 }
 
-void Group::EnterSession(const SessionID id, bool update)
+void Group::EnterSession(const SessionID id)
 {
-	Enqueue({GroupJob::type::Enter, id}, update);
+	Enqueue({GroupJob::type::Enter, id});
 }
 
 void Group::SetLoopMs(int loopMS)
@@ -295,7 +333,7 @@ void Group::SendPacket(const SessionID id, const SendBuffer& buffer) const
 
 void Group::MoveSession(const SessionID id, const GroupID dst) const
 {
-	_owner->MoveSession(id, dst, false);
+	_owner->MoveSession(id, dst);
 }
 
 bool Group::hasJob() const
