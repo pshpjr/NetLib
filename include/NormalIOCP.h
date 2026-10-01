@@ -134,6 +134,8 @@ protected:
     bool _checkTiemout = true;
     char _staticKey = 0;
     std::atomic_bool gracefulEnd = false;
+    //  Stop 전까지 유지되는 1 + 실행 중인 스레드 수
+    std::atomic<psh::int32> _aliveRef = 1;
     std::atomic_bool _isRunning = false;
     std::atomic_bool _startSignal = false;
 

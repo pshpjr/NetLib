@@ -66,7 +66,7 @@ void WindowsExecutor::Run()
         }
 
         auto executable = Executable::GetExecutable(overlap);
-        // Immediate failures already carry their result through PostInternal.
+        //  즉시 실패한 경우 result가 이미 있다.
         if (!executable->HasResult())
         {
             executable->SetResult(error, static_cast<std::size_t>(transferred));

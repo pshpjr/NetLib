@@ -181,7 +181,10 @@ stop을 쏘고 패킷을 또 보내는 멍청한 짓을 하면 그것도 처리�
 
 void IOCP::Stop()
 {
-    _isRunning.store(false);
+    if (!_isRunning.exchange(false))
+    {
+        return;
+    }
     _startSignal.store(true);
     _startSignal.notify_all();
     _listenSocket->Close();
@@ -195,11 +198,6 @@ void IOCP::Stop()
         DisconnectSession(session.GetSessionId());
     }
 
-    for (auto& thread : _threadArray)
-    {
-        if (thread.joinable() && thread.get_id() != std::this_thread::get_id()) thread.join();
-    }
-    OnEnd();
     gracefulEnd.store(true);
     gracefulEnd.notify_all();
 }
@@ -207,6 +205,13 @@ void IOCP::Stop()
 void IOCP::Wait()
 {
     gracefulEnd.wait(false);
+
+    for (auto& thread : _threadArray)
+    {
+        if (thread.joinable())
+            thread.join();
+    }
+    OnEnd();
 }
 
 void IOCP::SetTimeout(const SessionID sessionId, const int timeoutMillisecond)

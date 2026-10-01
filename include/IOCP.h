@@ -5,6 +5,8 @@
 #include "SessionTypes.h"
 #include "Executor.h"
 
+#include <functional>
+
 #include IOCP_HEADER
 
 class SendBuffer;
@@ -161,6 +163,9 @@ private:
 
     void _onDisconnect(SessionID sessionId, int wsaErrCode);
     void onRecvPacket(const Session& session, RecvBuffer& buffer);
+
+    void SpawnThread(std::function<void()> fn);
+    void ReleaseAliveRef();
 
     //WorkerThreadFunc
     void GroupThread();
