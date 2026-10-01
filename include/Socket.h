@@ -38,6 +38,11 @@ public:
     Socket(Socket&& other) noexcept;
     Socket& operator=(Socket&& other) noexcept;
 
+    //  플랫폼별 소켓 라이브러리 초기화/정리. 소켓을 만들기 전에 InitPlatform()을 호출하고,
+    //  성공했다면 모든 소켓을 닫은 뒤 CleanupPlatform()을 한 번 호출한다.
+    static psh::Result<NetError> InitPlatform();
+    static void CleanupPlatform();
+
     psh::Result<NetError> Init();
     psh::Result<NetError> Bind(const String& ip, psh::uint16 port);
     psh::Result<NetError> Listen(int backlog) const;

@@ -55,6 +55,22 @@ NetErrc NetError::ToNetErrc(int nativeCode)
     }
 }
 
+psh::Result<NetError> Socket::InitPlatform()
+{
+    WSADATA wsaData;
+    //  WSAStartup은 WSAGetLastError 대신 에러 코드를 직접 반환한다.
+    if (const int error = WSAStartup(MAKEWORD(2, 2), &wsaData); error != 0)
+    {
+        return NetError::FromNativeCode(error);
+    }
+    return true;
+}
+
+void Socket::CleanupPlatform()
+{
+    WSACleanup();
+}
+
 Socket::Socket()
     : NormalSocket(InvalidSocket, {})
 {
