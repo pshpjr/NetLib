@@ -3,9 +3,11 @@
 
 #include "Result.h"
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace psh
 {

@@ -2,6 +2,9 @@
 #include <Protocol.h>
 #include "stdafx.h"
 
+#include <cstring>
+#include <stdexcept>
+
 
 //front가 맨 앞이고 rear가 맨 끝인 상황 처리 해야 함. 
 int RingBuffer::Size() const
@@ -203,23 +206,28 @@ unsigned int RingBuffer::Peek(char *dst, const unsigned int size) const
 {
     const int front = GetIndex(_front);
     const unsigned int peekSize = size;
+    if (peekSize == 0) return 0;
+    if (dst == nullptr)
+    {
+        throw std::invalid_argument{"peek destination is null"};
+    }
     //size는 늘어나기만 함. 
     if (Size() < size)
     {
-        throw;
+        throw std::out_of_range{"peek size exceeds buffered data"};
     }
 
 
     if (DirectDequeueSize() >= peekSize)
     {
-        memcpy_s(dst, peekSize, &_buffer[front], peekSize);
+        std::memcpy(dst, &_buffer[front], peekSize);
     }
     else
     {
         const int deqSize = DirectDequeueSize();
 
-        memcpy_s(dst, deqSize, &_buffer[front], deqSize);
-        memcpy_s(dst + deqSize, peekSize - deqSize, &_buffer[0], peekSize - deqSize);
+        std::memcpy(dst, &_buffer[front], deqSize);
+        std::memcpy(dst + deqSize, &_buffer[0], peekSize - deqSize);
     }
 
     return peekSize;

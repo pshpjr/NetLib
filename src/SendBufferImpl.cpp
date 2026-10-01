@@ -1,6 +1,9 @@
 ﻿#include "SendBufferImpl.h"
 #include "stdafx.h"
 
+#include <cstring>
+#include <cwchar>
+
 
 TlsPool<SendBufferImpl, 0> SendBufferImpl::_pool(SERIAL_INIT_SIZE, SERIAL_INIT_MULTIPLIER);
 
@@ -59,9 +62,14 @@ SendBufferImpl::SendBufferImpl()
 
 bool SendBufferImpl::CopyData(SendBufferImpl& dst) const
 {
-    memcpy_s(dst.GetDataPtr(), dst.CanPushSize(), GetFront(), CanPopSize());
+    const auto size = CanPopSize();
+    if (size > dst.CanPushSize()) return false;
+    if (this != &dst)
+    {
+        std::memcpy(dst.GetDataPtr(), GetFront(), size);
+    }
 
-    dst.MoveWritePos(CanPopSize());
+    dst.MoveWritePos(size);
 
     return true;
 }
@@ -91,13 +99,13 @@ void SendBufferImpl::Encode(const char staticKey)
 }
 
 
-SendBufferImpl& SendBufferImpl::operator<<(const LPWSTR value)
+SendBufferImpl& SendBufferImpl::operator<<(wchar_t* const value)
 {
     //insert null terminated string to buffer
     const size_t strlen = std::wcslen(value) + 1;
     CanPush(strlen * sizeof(wchar_t));
-    wcscpy_s(reinterpret_cast<wchar_t*>(_rear), strlen, value);
-    _rear += strlen * sizeof(WCHAR);
+    std::memcpy(_rear, value, strlen * sizeof(wchar_t));
+    _rear += strlen * sizeof(wchar_t);
     return *this;
 }
 
@@ -121,7 +129,7 @@ void SendBufferImpl::SetWstr(const psh::LPCWSTR arr, const int size)
 {
     CanPush(size * sizeof(wchar_t));
     std::memcpy(_rear, arr.data(), size * sizeof(wchar_t));
-    _rear += size * sizeof(WCHAR);
+    _rear += size * sizeof(wchar_t);
 }
 
 void SendBufferImpl::SetCstr(const psh::LPCSTR arr, const int size)

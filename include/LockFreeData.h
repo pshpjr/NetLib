@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "MyWindows.h"
 namespace lock_free_data
 {
     constexpr unsigned long long pointerMask = 0x000'7FFF'FFFF'FFFF;

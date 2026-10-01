@@ -55,7 +55,7 @@ public:
         return ret;
     }
 
-    long IncreaseRef(LPCWCH content = L"")
+    long IncreaseRef(const wchar_t* content = L"")
     {
         const auto refIncResult = _refCount.fetch_add(1) + 1;
 
@@ -67,7 +67,7 @@ public:
         return refIncResult;
     }
 
-    void Release(LPCWCH content = L"")
+    void Release(const wchar_t* content = L"")
     {
         const auto refResult = _refCount.fetch_sub(1) - 1;
 
@@ -89,7 +89,7 @@ public:
 
     template <typename T>
     SendBufferImpl& operator <<(const T& value);
-    SendBufferImpl& operator <<(LPWSTR value);
+    SendBufferImpl& operator <<(wchar_t* value);
     SendBufferImpl& operator <<(psh::LPCWSTR value);
     SendBufferImpl& operator <<(const String& value);
 

@@ -18,6 +18,9 @@ class SettingParser;
 class SendBufferImpl;
 
 
+#ifdef _WIN32
+#include "MyWindows.h"
+
 class threadMonitor
 {
 public:
@@ -78,6 +81,8 @@ private:
     ULONGLONG _kernelTime = 0;
     ULONGLONG _userTime = 0;
 };
+
+#endif
 
 class NormalIOCP
 {

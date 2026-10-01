@@ -4,6 +4,8 @@
 #include "Utility.h"
 
 #include <atomic>
+#include <cstdlib>
+#include <new>
 #include <list>
 #include <mutex>
 
@@ -72,7 +74,6 @@ public:
     Node* createNode()
     {
         Node* newNode = static_cast<Node*>(malloc(sizeof(Node)));
-        __analysis_assume(newNode != nullptr);
         newNode->tail = nullptr;
 
 #ifdef TLS_LEAK_DEBUG

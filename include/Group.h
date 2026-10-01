@@ -6,6 +6,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
+#include <memory>
 
 class Session;
 class SendBuffer;
@@ -112,7 +114,7 @@ private:
         SessionID sessionId{};
         int errCode = -1;
         GroupID dst = GroupID(0);
-        DWORD transferred{0};
+        std::size_t transferred{0};
     };
     bool Enqueue(GroupJob job, bool update = true);
 
@@ -124,7 +126,7 @@ private:
     bool HandleJob();
 
     template <typename Header>
-    void RecvHandler(Session& session, void* iocp, DWORD transferred);
+    void RecvHandler(Session& session, void* iocp, std::size_t transferred);
 
     void onRecvPacket(const Session& session, RecvBuffer& buffer);
     std::unique_ptr<Logger> _groupLogger;

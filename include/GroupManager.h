@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Group.h"
 
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -23,7 +24,7 @@ public:
 
     void Update();
 
-    bool OnRecv(SessionID sessionId, GroupID groupId, DWORD transferred);
+    bool OnRecv(SessionID sessionId, GroupID groupId, std::size_t transferred);
 
     static consteval GroupID BaseGroupID()
     {

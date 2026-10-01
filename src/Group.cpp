@@ -310,11 +310,11 @@ bool Group::hasJob() const
 }
 
 template <typename Header>
-void Group::RecvHandler(Session& session, void* iocp, DWORD transferred)
+void Group::RecvHandler(Session& session, void* iocp, std::size_t transferred)
 {
 	IOCP& server = *static_cast<IOCP*>(iocp);
 	int loopCount = 0;
-	DWORD handleBytes = 0;
+	std::size_t handleBytes = 0;
 
 	RingBuffer& recvQ = session._recvQ;
 	session.setRecvHandled(false);

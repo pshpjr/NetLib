@@ -1,7 +1,9 @@
 #pragma once
 #include "Container.h"
 #include "Macro.h"
-#include "MyWindows.h"
+
+#include <atomic>
+#include <utility>
 
 template <typename T, int BufferSize>
 class LockFreeFixedQueue
