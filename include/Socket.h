@@ -9,6 +9,9 @@
 
 #include SOCKET_HEADER
 
+#include <functional>
+#include <memory>
+
 class Address;
 class Executable;
 
@@ -46,11 +49,16 @@ public:
     psh::Result<NetError> Close();
     static IN_ADDR Ip2Address(const psh::WCHAR* ip);
 
+    using IoCallback = std::function<void(NetError, DWORD)>;
+
     //  이상 없으면 0, 아니면 에러코드
     bool IsValid() const;
-    // Pending is an error result; retain the I/O reference until completion.
-    psh::Result<NetError> Send(SocketSendBufferSpan buffers, Executable& executable) const;
-    psh::Result<NetError> Recv(SocketRecvBufferSpan buffers, Executable& executable) const;
+
+
+    //  send의 경우 전달 받은 버퍼를 전부 송신 한 후 콜백 발생
+    void SetCallbacks(IoCallback recvCallback, IoCallback sendCallback);
+    psh::Result<NetError> Send(SocketSendBufferSpan buffers) const;
+    psh::Result<NetError> Recv(SocketRecvBufferSpan buffers) const;
 
     NetError LastError();
     psh::Result<NetError> SetLinger(bool on) const;
@@ -68,4 +76,6 @@ private:
     Executor* _executor = nullptr;
     bool _registered = false;
     NativeHandle _beforeSocket = InvalidSocket;
+    std::unique_ptr<Executable> _sendExecutable;
+    std::unique_ptr<Executable> _recvExecutable;
 };

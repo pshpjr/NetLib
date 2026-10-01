@@ -157,8 +157,6 @@ private:
 
 	// IOCP dispatch
 	IOCP* _owner;
-	Executable& _recvExecute;
-	Executable& _postSendExecute;
 	Executable& _releaseExecutable;
 
 	// Receive

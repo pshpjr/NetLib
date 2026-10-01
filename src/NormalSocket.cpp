@@ -69,6 +69,8 @@ Socket::Socket(Executor& executor)
 Socket::Socket(Executor& executor, const NativeHandle socket, const SOCKADDR_IN address)
     : NormalSocket(socket, address)
     , _executor(&executor)
+    , _sendExecutable(std::make_unique<Executable>(Executable::IoType::Send))
+    , _recvExecutable(std::make_unique<Executable>(Executable::IoType::Recv))
 {
 }
 
@@ -85,6 +87,8 @@ Socket::Socket(Socket&& other) noexcept
     , _executor(other._executor)
     , _registered(other._registered)
     , _beforeSocket(other._beforeSocket)
+    , _sendExecutable(std::move(other._sendExecutable))
+    , _recvExecutable(std::move(other._recvExecutable))
 {
     other._socket = InvalidSocket;
     other._executor = nullptr;
@@ -103,6 +107,8 @@ Socket& Socket::operator=(Socket&& other) noexcept
         _executor = other._executor;
         _registered = other._registered;
         _beforeSocket = other._beforeSocket;
+        _sendExecutable = std::move(other._sendExecutable);
+        _recvExecutable = std::move(other._recvExecutable);
 
         other._socket = InvalidSocket;
         other._executor = nullptr;
@@ -179,46 +185,46 @@ psh::Result<NetError> Socket::Close()
     return true;
 }
 
-psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers, Executable& executable) const
+psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers) const
 {
-    executable.Clear();
+    _sendExecutable->Clear();
     if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
     {
         const auto error = NetError::FromNativeCode(WSAEINVAL);
-        executable.Execute(error, 0);
+        _sendExecutable->Execute(error, 0);
         return error;
     }
     if (WSASend(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, 0,
-                executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
+                _sendExecutable->GetOverlapped(), nullptr) == SOCKET_ERROR)
     {
         auto error = NetError::FromNativeCode(WSAGetLastError());
         if (error == NetErrc::Pending)
             return error;
 
-        _executor->PostInternal(executable);
+        _executor->PostInternal(*_sendExecutable);
         return error;
     }
     return true;
 }
 
-psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers, Executable& executable) const
+psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers) const
 {
     DWORD flags = 0;
-    executable.Clear();
+    _recvExecutable->Clear();
     if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
     {
         auto error = NetError::FromNativeCode(WSAEINVAL);
-        executable.Execute(error, 0);
+        _recvExecutable->Execute(error, 0);
         return error;
     }
     if (WSARecv(_socket, buffers.data(), static_cast<DWORD>(buffers.size()), nullptr, &flags,
-                executable.GetOverlapped(), nullptr) == SOCKET_ERROR)
+                _recvExecutable->GetOverlapped(), nullptr) == SOCKET_ERROR)
     {
         const auto error = NetError::FromNativeCode(WSAGetLastError());
         if (error == NetErrc::Pending)
             return error;
 
-        _executor->PostInternal(executable);
+        _executor->PostInternal(*_recvExecutable);
         return error;
     }
     return true;
@@ -370,4 +376,10 @@ IN_ADDR Socket::Ip2Address(const WCHAR* ip)
     IN_ADDR address{0};
     InetPtonW(AF_INET, ip, &address);
     return address;
+}
+
+void Socket::SetCallbacks(IoCallback recvCallback, IoCallback sendCallback )
+{
+    _recvExecutable->SetCallback(std::move(recvCallback));
+    _sendExecutable->SetCallback(std::move(sendCallback));
 }
