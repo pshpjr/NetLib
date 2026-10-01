@@ -721,7 +721,7 @@ void IOCP::PrintMonitorString() const
 //  TODO: executor에 타이머 기능 추가하면 제거
 void IOCP::GroupThread()
 {
-    psh::util::set_thread_name("IOCP Group Thread");
+    psh::util::SetThreadName("IOCP Group Thread");
     using namespace std::chrono;
 
 
@@ -749,7 +749,7 @@ void IOCP::WorkerThread()
 
 void IOCP::AcceptThread()
 {
-    psh::util::set_thread_name("IOCP Accept Thread");
+    psh::util::SetThreadName("IOCP Accept Thread");
     WaitStart();
 
     while (_isRunning)
@@ -819,7 +819,7 @@ void IOCP::AcceptThread()
 
 void IOCP::MonitorThread()
 {
-    psh::util::set_thread_name("IOCP Monitor Thread");
+    psh::util::SetThreadName("IOCP Monitor Thread");
     using namespace std::chrono;
 
     WaitStart();
@@ -856,7 +856,7 @@ void IOCP::MonitorThread()
 
 void IOCP::TimeoutThread()
 {
-    psh::util::set_thread_name("IOCP Timeout Thread");
+    psh::util::SetThreadName("IOCP Timeout Thread");
     using namespace std::chrono;
 
     WaitStart();

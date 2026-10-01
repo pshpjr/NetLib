@@ -45,7 +45,7 @@ void WindowsExecutor::Run()
     if (state_.load() == State::Stopped)
         return;
 
-    psh::util::set_thread_name("IOCP Worker Thread");
+    psh::util::SetThreadName("IOCP Worker Thread");
     PRO_THREAD("WORKER");
     srand(GetCurrentThreadId());
 

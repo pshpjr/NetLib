@@ -23,7 +23,7 @@ namespace psh::util
     std::string WToS(std::wstring_view wstr);
     std::wstring SToW(std::string_view str);
 
-    void set_thread_name(const char *threadName);
+    void SetThreadName(const char *threadName);
 
     inline void DebugBreak()
     {

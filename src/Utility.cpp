@@ -5,6 +5,7 @@
 #include "Utility.h"
 
 #include <iconv.h>
+#include <algorithm>
 #include <array>
 #include <cerrno>
 #include <memory>
@@ -12,7 +13,6 @@
 #include <cstring>
 
 
-#include "concurrentqueue.h"
 
 
 #ifdef _WIN32
@@ -71,32 +71,19 @@ std::wstring psh::util::SToW(std::string_view str)
     return result;
 }
 
-// 디버거에게 스레드 이름을 전달하는 예외 처리
-const DWORD MS_VC_EXCEPTION = 0x406D1388;
-#pragma pack(push, 8)
-typedef struct tagTHREADNAME_INFO {
-    DWORD dwType; // 반드시 0x1000이어야 합니다.
-    LPCSTR szName; // 스레드 이름
-    DWORD dwThreadID; // 스레드 ID (-1로 설정하면 호출한 스레드)
-    DWORD dwFlags; // 예약 필드, 0으로 설정
-} THREADNAME_INFO;
-#pragma pack(pop)
-
-void psh::util::set_thread_name(const char *threadName)
+void psh::util::SetThreadName(const char* threadName)
 {
-    THREADNAME_INFO info;
-    info.dwType = 0x1000;
-    info.szName = threadName;
-    info.dwThreadID = GetCurrentThreadId();
-    info.dwFlags = 0;
-
-    __try
-    {
-        RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR *) &info);
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-    }
+    if (threadName == nullptr) return;
+#ifdef _WIN32
+    const auto name = SToW(threadName);
+    (void)::SetThreadDescription(::GetCurrentThread(), name.c_str());
+#else
+    // Linux includes the terminating null in its 16-byte name limit.
+    std::array<char, 16> name{};
+    const auto length = std::min(std::strlen(threadName), name.size() - 1);
+    std::memcpy(name.data(), threadName, length);
+    (void)::pthread_setname_np(::pthread_self(), name.data());
+#endif
 }
 
 bool psh::util::TlsAlloc(TlsKey& outKey)

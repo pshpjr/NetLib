@@ -1,70 +1,59 @@
 #pragma once
-#include "MyWindows.h"
 
-/////////////////////////////////////////////////////////////////////////////
-// CpuUsage CPUTime(); // CPUTime(hProcess)
-//
-// while ( 1 )
-// {
-// CPUTIme.UpdateCpuTime();
-// wprintf(L"Processor:%f / Process:%f \n", CPUTime.ProcessorTotal(), CPUTime.ProcessTotal());
-// wprintf(L"ProcessorKernel:%f / ProcessKernel:%f \n", CPUTime.ProcessorKernel(), CPUTime.ProcessKernel());
-// wprintf(L"ProcessorUser:%f / ProcessUser:%f \n", CPUTime.ProcessorUser(), CPUTime.ProcessUser());
-// Sleep(1000);
-// }
-/////////////////////////////////////////////////////////////////////////////
+#include <cstdint>
+
+// CPU percentages for the system and the current process, normalized to all logical processors.
+// Construction establishes a baseline; call UpdateCpuTime() every 500-1000 ms for a useful sample.
 class CpuUsage
 {
 public:
-    //----------------------------------------------------------------------
-    // 생성자, 확인대상 프로세스 핸들. 미입력시 자기 자신.
-    //----------------------------------------------------------------------
-    CpuUsage(HANDLE hProcess = INVALID_HANDLE_VALUE);
-    void UpdateCpuTime(void);
+    CpuUsage();
+    void UpdateCpuTime();
 
-    float ProcessorTotal(void) const
+    float ProcessorTotal() const
     {
         return _fProcessorTotal;
     }
 
-    float ProcessorUser(void) const
+    float ProcessorUser() const
     {
         return _fProcessorUser;
     }
 
-    float ProcessorKernel(void) const
+    float ProcessorKernel() const
     {
         return _fProcessorKernel;
     }
 
-    float ProcessTotal(void) const
+    float ProcessTotal() const
     {
         return _fProcessTotal;
     }
 
-    float ProcessUser(void) const
+    float ProcessUser() const
     {
         return _fProcessUser;
     }
 
-    float ProcessKernel(void) const
+    float ProcessKernel() const
     {
         return _fProcessKernel;
     }
 
 private:
-    HANDLE _hProcess;
-    int _iNumberOfProcessors;
-    float _fProcessorTotal;
-    float _fProcessorUser;
-    float _fProcessorKernel;
-    float _fProcessTotal;
-    float _fProcessUser;
-    float _fProcessKernel;
-    ULARGE_INTEGER _ftProcessor_LastKernel;
-    ULARGE_INTEGER _ftProcessor_LastUser;
-    ULARGE_INTEGER _ftProcessor_LastIdle;
-    ULARGE_INTEGER _ftProcess_LastKernel;
-    ULARGE_INTEGER _ftProcess_LastUser;
-    ULARGE_INTEGER _ftProcess_LastTime;
+    unsigned int _numberOfProcessors = 1;
+    float _fProcessorTotal = 0;
+    float _fProcessorUser = 0;
+    float _fProcessorKernel = 0;
+    float _fProcessTotal = 0;
+    float _fProcessUser = 0;
+    float _fProcessKernel = 0;
+    bool _hasProcessorSample = false;
+    bool _hasProcessSample = false;
+    std::uint64_t _processorLastTotal = 0;
+    std::uint64_t _processorLastKernel = 0;
+    std::uint64_t _processorLastUser = 0;
+    std::uint64_t _processLastKernel = 0;
+    std::uint64_t _processLastUser = 0;
+    std::uint64_t _processLastTime = 0;
 };
