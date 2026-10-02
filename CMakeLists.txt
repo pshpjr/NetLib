@@ -10,8 +10,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /DEBUG")
 endif ()
 
-# 유니코드 매크로 정의
-add_compile_definitions(_UNICODE UNICODE)
+# 유니코드 매크로 정의 (Win32 API의 W 버전 선택용)
+if (WIN32)
+    add_compile_definitions(_UNICODE UNICODE)
+endif ()
 
 # PDB 출력 경로 설정
 set(CMAKE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/")
@@ -38,7 +40,6 @@ add_library(NetLib STATIC
         src/MemoryUsage.cpp
         src/MultiThreadMemoryPool.cpp
         src/NormalIOCP.cpp
-        src/NormalSocket.cpp
         src/ProcessMonitor.cpp
         src/RedisConnection.cpp
         src/RUDPSocket.cpp
@@ -56,9 +57,18 @@ add_library(NetLib STATIC
         src/TLSPool.cpp
         src/Utility.cpp
         src/WebHook.cpp
-        src/WindowsExecutor.cpp
         src/stdafx.cpp
 )
+
+# 플랫폼별 I/O 백엔드 (Socket, Executor 구현)
+if (WIN32)
+    target_sources(NetLib PRIVATE
+            src/NormalSocket.cpp
+            src/WindowsExecutor.cpp
+    )
+else ()
+    # TODO: Linux Socket·Executor 구현 추가 (Executor.h의 LinuxExecutor.h)
+endif ()
 
 # C++ 표준 설정
 target_compile_features(NetLib PUBLIC cxx_std_23)
@@ -77,16 +87,19 @@ else ()
     endif ()
 endif ()
 
-# 라이브러리 링크 설정 (공용)
-target_link_libraries(NetLib PUBLIC
-        ws2_32
-        wsock32
-        Winmm
-        Synchronization
-        Dbghelp
-        Psapi
-        kernel32
-)
+# 라이브러리 링크 설정 (플랫폼별)
+if (WIN32)
+    target_link_libraries(NetLib PUBLIC
+            ws2_32
+            wsock32
+            Dbghelp
+            Psapi
+            kernel32
+    )
+else ()
+    find_package(Threads REQUIRED)
+    target_link_libraries(NetLib PUBLIC Threads::Threads)
+endif ()
 
 # Profiling is optional and its public macros must match consumers.
 option(NETLIB_ENABLE_TRACY "Enable Tracy profiler integration" OFF)
