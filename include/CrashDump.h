@@ -1,9 +1,13 @@
-﻿#pragma once
+#pragma once
 
+#ifdef _WIN32
 #include "MyWindows.h"
+#endif
 
 #include <atomic>
+#include <cstdint>
 
+//  리눅스에선 OS가 남김
 class CrashDump
 {
 public:
@@ -11,10 +15,10 @@ public:
 
     static void Crash();
 
-    // Register before starting worker threads. The string must live until process exit.
+    // 워커 실행 전 등록, 인자는 static 리터럴이여야 함
     static void SetBuildInfo(const char* json);
 
-
+#ifdef _WIN32
     static LONG WINAPI ExceptionFilter(__in const PEXCEPTION_POINTERS pExceptionPointer);
 
     static void SetHandler();
@@ -28,6 +32,7 @@ public:
     static int _custom_Report_hook(int reportType, char* message, int* returnValue);
 
     static void PurecallHandler();
+#endif
 
     static std::atomic<long> _dumpCount;
 

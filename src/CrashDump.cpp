@@ -1,9 +1,12 @@
 ﻿#include "CrashDump.h"
 
+#ifdef _WIN32
 #include <psapi.h>
 
 #include <crtdbg.h>
 #include <DbgHelp.h>
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -19,6 +22,24 @@ void CrashDump::SetBuildInfo(const char* json)
     }
 }
 
+void CrashDump::Crash()
+{
+#ifdef _WIN32
+    //  접근 위반을 일으켜 ExceptionFilter에서 덤프를 남긴다.
+    //  volatile이 없으면 컴파일러가 널 역참조를 제거할 수 있다.
+    volatile int* p = nullptr;
+    *p = 0;
+#else
+    //  SIGABRT로 OS가 core dump를 남긴다.
+    std::abort();
+#endif
+}
+
+#ifndef _WIN32
+CrashDump::CrashDump()
+{
+}
+#else
 CrashDump::CrashDump()
 {
     _invalid_parameter_handler oldHandler, newHandler;
@@ -35,12 +56,6 @@ CrashDump::CrashDump()
     _set_purecall_handler(PurecallHandler);
 
     SetHandler();
-}
-
-void CrashDump::Crash()
-{
-    const int* p = nullptr;
-    p = nullptr;
 }
 
 LONG CrashDump::ExceptionFilter(const PEXCEPTION_POINTERS pExceptionPointer)
@@ -66,8 +81,9 @@ LONG CrashDump::ExceptionFilter(const PEXCEPTION_POINTERS pExceptionPointer)
 
     WCHAR szFileName[MAX_PATH] = {0,};
     GetLocalTime(&st);
-    wsprintfW(szFileName, L"DUMP_%04d%02d%02d_%02d%02d%02d_%d_%lldMB.dmp",
-             st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, DumpCount, iWorkingMemory);
+    swprintf(szFileName, MAX_PATH, L"DUMP_%04d%02d%02d_%02d%02d%02d_%ld_%zuMB.dmp",
+             st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, DumpCount,
+             iWorkingMemory / (1024 * 1024));
 
     wprintf(L"\n\n\t\t!!!!!! CRASH DUMP !!!!!  %04d%02d%02d_%02d%02d%02d\n\n", st.wYear, st.wMonth, st.wDay
           , st.wHour, st.wMinute, st.wSecond);
@@ -160,3 +176,4 @@ void CrashDump::PurecallHandler()
 {
     Crash();
 }
+#endif

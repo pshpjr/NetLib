@@ -1,5 +1,6 @@
-﻿#pragma once
-#include "MyWindows.h"
+#pragma once
+
+#include <cstddef>
 
 class MemoryUsage
 {
@@ -11,6 +12,7 @@ public:
     size_t GetPMemSize() const;
     size_t GetPeakVirtualMemSize() const;
     size_t GetVirtualMemSize() const;
+    //  Paged/NonPaged pool은 Windows에만 있다. 다른 OS에서는 0
     size_t GetPeakPagedPoolUsage() const;
     size_t GetPeakNonPagedPoolUsage() const;
     size_t GetPagedPoolUsage() const;
@@ -27,6 +29,4 @@ private:
     size_t _peakNonPagedPoolUsage = 0;
     size_t _pagedPoolUsage = 0;
     size_t _nonPagedPoolUsage = 0;
-
-    HANDLE _hProcess = INVALID_HANDLE_VALUE;
 };
