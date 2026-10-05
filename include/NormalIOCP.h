@@ -2,6 +2,7 @@
 #include "LockFreeStack.h"
 #include "Session.h"
 #include "SessionTypes.h"
+#include "ThreadWrapper.h"
 
 #include <atomic>
 #include <memory>
@@ -84,6 +85,8 @@ private:
 
 #endif
 
+
+
 class NormalIOCP
 {
 protected:
@@ -95,6 +98,7 @@ public:
     NormalIOCP(NormalIOCP&& other) = delete;
     NormalIOCP& operator=(const NormalIOCP& other) = delete;
     NormalIOCP& operator=(NormalIOCP&& other) = delete;
+
 protected:
     NormalIOCP();
 
@@ -117,12 +121,11 @@ protected:
     *
     */
 
-    //  TODO: executor 전환 전 임시. 소켓 생성에 필요한 executor를 IOCP 내부에 둔다.
     //  _listenSocket보다 먼저 선언되어야 한다. (멤버 초기화 순서)
     Executor _executor;
     std::unique_ptr<Socket> _listenSocket;
 
-    std::vector<std::thread> _threadArray;
+    std::vector<psh::ThreadWrapper> _threadArray;
     /*TODO: 타입들 전부 내 타입으로 수정하기
      */
     String _ip{};
