@@ -1,5 +1,6 @@
 #pragma once
 #include "GroupTypes.h"
+#include "Executable.h"
 #include "LockFreeFixedQueue.h"
 #include "Logger.h"
 #include "SessionTypes.h"
@@ -12,7 +13,6 @@
 class Session;
 class SendBuffer;
 class GroupManager;
-class Executable;
 class RecvBuffer;
 class IOCP;
 

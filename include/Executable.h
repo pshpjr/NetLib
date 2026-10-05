@@ -1,4 +1,6 @@
 #pragma once
+
+#ifdef _WIN32
 #include <array>
 #include <cassert>
 #include <cstddef>
@@ -12,7 +14,7 @@
 #include "MyWindows.h"
 #include "SocketTypes.h"
 
-class Executable final
+class WindowsExecutable final
 {
 public:
     using Callback = std::function<void(NetError, std::size_t)>;
@@ -28,15 +30,15 @@ public:
         Custom
     };
 
-    explicit Executable(IoType type, Callback callback = {})
+    explicit WindowsExecutable(IoType type, Callback callback = {})
         : _type{type}, _overlapped(this), _callback(std::move(callback))
     {
     }
 
-    Executable(const Executable&) = delete;
-    Executable(Executable&&) = delete;
-    Executable& operator=(const Executable&) = delete;
-    Executable& operator=(Executable&&) = delete;
+    WindowsExecutable(const WindowsExecutable&) = delete;
+    WindowsExecutable(WindowsExecutable&&) = delete;
+    WindowsExecutable& operator=(const WindowsExecutable&) = delete;
+    WindowsExecutable& operator=(WindowsExecutable&&) = delete;
 
     void SetCallback(Callback callback)
     {
@@ -84,7 +86,7 @@ public:
         return ioTypeToStr[static_cast<char>(_type)];
     }
 
-    static Executable* GetExecutable(OVERLAPPED* overlap)
+    static WindowsExecutable* GetExecutable(OVERLAPPED* overlap)
     {
         return overlap ? reinterpret_cast<OverlappedIO*>(overlap)->Owner() : nullptr;
     }
@@ -93,7 +95,7 @@ private:
     class OverlappedIO
     {
     public:
-        explicit OverlappedIO(Executable* owner) : _owner(owner)
+        explicit OverlappedIO(WindowsExecutable* owner) : _owner(owner)
         {
             Clear();
         }
@@ -108,14 +110,14 @@ private:
             return &_overlapped;
         }
 
-        Executable* Owner() const
+        WindowsExecutable* Owner() const
         {
             return _owner;
         }
 
     private:
         OVERLAPPED _overlapped;
-        Executable* _owner;
+        WindowsExecutable* _owner;
     };
 
     static_assert(std::is_standard_layout_v<OverlappedIO>);
@@ -136,3 +138,10 @@ private:
     Callback _callback;
     std::optional<std::tuple<NetError, std::size_t>> _result;
 };
+
+using Executable = WindowsExecutable;
+#else
+// Linux implementation will be added here.
+class LinuxExecutable;
+using Executable = LinuxExecutable;
+#endif

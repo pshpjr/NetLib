@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include "GroupTypes.h"
+#include "Executable.h"
 #include "LockQueue.h"
 #include "Macro.h"
 #include "RingBuffer.h"
@@ -16,7 +17,6 @@
 class SendBufferImpl;
 class RecvBuffer;
 class IOCP;
-class Executable;
 
 
 //#define SESSION_DEBUG

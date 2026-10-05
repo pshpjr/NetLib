@@ -4,6 +4,7 @@
 #include "GroupManager.h"
 #include "SessionTypes.h"
 #include "Executor.h"
+#include "Executable.h"
 
 #include <functional>
 
@@ -11,7 +12,6 @@
 
 class SendBuffer;
 class RecvBuffer;
-class Executable;
 class Client;
 
 

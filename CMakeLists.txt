@@ -36,6 +36,7 @@ add_library(NetLib STATIC
         src/LockFreeStack.cpp
         src/LockPool.cpp
         src/LockStack.cpp
+        src/LinuxExecutor.cpp
         src/MemoryPool.cpp
         src/MemoryUsage.cpp
         src/MultiThreadMemoryPool.cpp

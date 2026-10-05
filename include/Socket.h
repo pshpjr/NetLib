@@ -3,6 +3,7 @@
 #include "BuildOption.h"
 #include "Buffer.h"
 #include "Executor.h"
+#include "Executable.h"
 #include "SocketTypes.h"
 #include "Types.h"
 #include "Result.h"
@@ -14,7 +15,6 @@
 #include <memory>
 
 class Address;
-class Executable;
 
 
 class Socket : public SOCKET_CLASS

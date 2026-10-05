@@ -1,13 +1,13 @@
 ﻿#pragma once
 
 #include "MyWindows.h"
+#include "Executable.h"
 #include "SocketTypes.h"
 #include "Types.h"
 
 #include <atomic>
 #include <functional>
 
-class Executable;
 
 class WindowsExecutor
 {
