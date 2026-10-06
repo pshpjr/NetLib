@@ -17,6 +17,10 @@
     },
     "libiconv",
     "tomlplusplus",
+    {
+      "name": "liburing",
+      "platform": "linux"
+    },
     "fmt"
   ],
   "features": {

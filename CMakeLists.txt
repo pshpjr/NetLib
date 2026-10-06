@@ -108,6 +108,13 @@ else ()
     target_link_libraries(NetLib PUBLIC Threads::Threads)
 endif ()
 
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # liburing (io_uring) - vcpkg port provides pkgconfig only
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBURING REQUIRED IMPORTED_TARGET liburing)
+    target_link_libraries(NetLib PUBLIC PkgConfig::LIBURING)
+endif ()
+
 # Profiling is optional and its public macros must match consumers.
 option(NETLIB_ENABLE_TRACY "Enable Tracy profiler integration" OFF)
 if(NETLIB_ENABLE_TRACY)
