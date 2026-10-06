@@ -491,10 +491,7 @@ void IOCP::SetSessionStaticKey(const SessionID id, const char staticKey)
 
 void IOCP::HandleInput()
 {
-    if (GetAsyncKeyState('D'))
-    {
-        Stop();
-    }
+
 }
 
 

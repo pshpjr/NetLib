@@ -7,6 +7,13 @@
 #include <string>
 #include <string_view>
 
+#if defined(_WIN32) || defined(_WIN64)
+#include "MyWindows.h"
+#else
+#include <arpa/inet.h>
+#endif
+
+
 using Port = psh::uint16;
 
 class Ip
@@ -59,9 +66,6 @@ public:
 private:
     psh::uint32 _value = 0;
 };
-
-//  IPv4 주소 + 포트
-struct sockaddr_in;
 
 class SockAddr
 {

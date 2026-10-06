@@ -3,7 +3,6 @@
 #ifdef _WIN32
 #include "MyWindows.h"
 #else
-#include <arpa/inet.h>
 #include <netinet/in.h>
 #endif
 

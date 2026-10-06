@@ -45,7 +45,7 @@ public:
 
     psh::Result<NetError> Init();
     psh::Result<NetError> Bind(Ip ip, Port port);
-    psh::Result<NetError> Listen(int backlog) const;
+    psh::Result<NetError> Listen(int backlog = SOMAXCONN) const;
     psh::Result<Socket, NetError> Accept() const;
     psh::Result<NetError> Connect(Ip ip, Port port);
     psh::Result<NetError> CancelIO() const;

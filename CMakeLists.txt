@@ -36,7 +36,6 @@ add_library(NetLib STATIC
         src/LockFreeStack.cpp
         src/LockPool.cpp
         src/LockStack.cpp
-        src/LinuxExecutor.cpp
         src/MemoryPool.cpp
         src/MemoryUsage.cpp
         src/MultiThreadMemoryPool.cpp
@@ -68,7 +67,11 @@ if (WIN32)
             src/WindowsExecutor.cpp
     )
 else ()
-    # TODO: Linux Socket·Executor 구현 추가 (Executor.h의 LinuxExecutor.h)
+    # Linux socket backend is currently a build-only stub.
+    target_sources(NetLib PRIVATE
+            src/LinuxSocket.cpp
+            src/LinuxExecutor.cpp
+    )
 endif ()
 
 # C++ 표준 설정
@@ -83,9 +86,12 @@ if (CMAKE_CONFIGURATION_TYPES)
 else ()
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_definitions(NetLib PRIVATE DEBUG)
-    elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
+    elseif (
+        CMAKE_BUILD_TYPE STREQUAL "Release"
+        OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+    )
         target_compile_definitions(NetLib PRIVATE RELEASE)
-    endif ()
+    endif()
 endif ()
 
 # 라이브러리 링크 설정 (플랫폼별)
@@ -119,7 +125,14 @@ target_include_directories(NetLib PRIVATE ${TOMLPLUSPLUS_INCLUDE_DIR})
 target_compile_definitions(NetLib PRIVATE TOML_HEADER_ONLY=1)
 find_package(unofficial-libmysql CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
-target_link_libraries(NetLib PRIVATE Iconv::Iconv CURL::libcurl unofficial::libmysql::libmysql redis++::redis++)
+
+if(WIN32)
+    set(REDIS_PLUS_PLUS_TARGET redis++::redis++)
+else()
+    set(REDIS_PLUS_PLUS_TARGET redis++::redis++_static)
+endif()
+
+target_link_libraries(NetLib PRIVATE Iconv::Iconv CURL::libcurl unofficial::libmysql::libmysql ${REDIS_PLUS_PLUS_TARGET})
 
 # 외부 패키지 링크 설정s
 

@@ -17,7 +17,6 @@ enum class NetErrc
     OperationCanceled,
     TimedOut,
     NotFound,
-    Unknown,
     ConnectionRefused,
     NetworkUnreachable,
     AddressInUse,
@@ -25,6 +24,8 @@ enum class NetErrc
     PermissionDenied,
     ResourceExhausted,
     InvalidExecutor,
+    InvalidParameter,
+    Unknown,
 };
 
 struct NetError
