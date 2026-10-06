@@ -15,7 +15,6 @@ class MemoryUsage;
 class CpuUsage;
 class Socket;
 class Session;
-class SettingParser;
 class SendBufferImpl;
 
 
@@ -128,10 +127,10 @@ protected:
     std::vector<psh::ThreadWrapper> _threadArray;
     /*TODO: 타입들 전부 내 타입으로 수정하기
      */
-    String _ip{};
+    Ip _ip{};
     psh::uint16 _maxNetThread = 0;
     psh::uint16 _maxWorkerThread = 0;
-    psh::uint16 _port{};
+    Port _port{};
     psh::uint16 _backlog = 0;
 
     bool _checkTiemout = true;
@@ -185,5 +184,4 @@ protected:
     */
 
     std::unique_ptr<GroupManager> _groupManager;
-    std::unique_ptr<SettingParser> _settingParser;
 };

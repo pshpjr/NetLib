@@ -48,8 +48,8 @@ public:
 	void SetSessionId(const SessionID sessionID);
 
 	// Connection
-	String GetIp() const;
-	psh::uint16 GetPort() const;
+	Ip GetIp() const;
+	Port GetPort() const;
 	SockAddr GetAddress() const;
 	void SetSocket(Socket&& socket);
 	void SetConnect();

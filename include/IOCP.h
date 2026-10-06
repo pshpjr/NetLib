@@ -31,10 +31,9 @@ class IOCP : public IOCP_CLASS
 public:
     IOCP();
 
-    bool Init();
     bool ClientInit(psh::uint16 maxRunningThread, psh::uint16 workerThread, char staticKey, bool useGroup
                     , bool useMonitor, bool useTimeout);
-    bool Init(const String& ip
+    bool Init(Ip ip
               , Port port
               , psh::uint16 backlog
               , psh::uint16 maxRunningThread
@@ -63,7 +62,7 @@ public:
     void ReleaseFreeIndex(unsigned short index);
     void ProcessBuffer(Session& session, SendBufferImpl& buffer);
     //connect
-    psh::Result<SessionID, NetError> GetClientSession(const String& ip, Port port);
+    psh::Result<SessionID, NetError> GetClientSession(Ip ip, Port port);
     bool IsValidSession(SessionID id);
     //GROUP
 

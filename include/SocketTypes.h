@@ -7,9 +7,6 @@
 #include "SockAddr.h"
 #include "Types.h"
 
-//소켓 관련
-using Port = psh::uint16;
-
 enum class NetErrc
 {
     None,

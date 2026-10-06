@@ -7,6 +7,8 @@
 #include <string>
 #include <string_view>
 
+using Port = psh::uint16;
+
 class Ip
 {
 public:
@@ -66,7 +68,7 @@ class SockAddr
 public:
     constexpr SockAddr() = default;
 
-    constexpr SockAddr(const Ip ip, const psh::uint16 port)
+    constexpr SockAddr(const Ip ip, const Port port)
         : _ip(ip), _port(port)
     {
     }
@@ -80,7 +82,7 @@ public:
         return _ip;
     }
 
-    constexpr psh::uint16 GetPort() const
+    constexpr Port GetPort() const
     {
         return _port;
     }
@@ -93,5 +95,5 @@ public:
 
 private:
     Ip _ip{};
-    psh::uint16 _port = 0;
+    Port _port = 0;
 };

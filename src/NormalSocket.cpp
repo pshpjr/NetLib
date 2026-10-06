@@ -271,12 +271,12 @@ SockAddr Socket::GetSockAddress() const
     return _sockAddr;
 }
 
-String Socket::GetIp() const
+Ip Socket::GetIp() const
 {
-    return _sockAddr.GetIp().ToWString();
+    return _sockAddr.GetIp();
 }
 
-psh::uint16 Socket::GetPort() const
+Port Socket::GetPort() const
 {
     return _sockAddr.GetPort();
 }
@@ -304,14 +304,9 @@ bool Socket::IsValid() const
 }
 
 
-psh::Result<NetError> Socket::Bind(const String& ip, psh::uint16 port)
+psh::Result<NetError> Socket::Bind(Ip ip, Port port)
 {
-    const auto parsedIp = Ip::Parse(ip);
-    if (!parsedIp.has_value())
-    {
-        return NetError::FromNativeCode(WSAEINVAL);
-    }
-    _sockAddr = SockAddr(*parsedIp, port);
+    _sockAddr = SockAddr(ip, port);
     const sockaddr_in native = _sockAddr.ToNative();
 
     if (bind(_socket, reinterpret_cast<const sockaddr*>(&native), sizeof(native)) == SOCKET_ERROR)
@@ -353,14 +348,9 @@ psh::Result<Socket, NetError> Socket::Accept() const
 }
 
 
-psh::Result<NetError> Socket::Connect(const String& ip, psh::uint16 port)
+psh::Result<NetError> Socket::Connect(Ip ip, Port port)
 {
-    const auto parsedIp = Ip::Parse(ip);
-    if (!parsedIp.has_value())
-    {
-        return NetError::FromNativeCode(WSAEINVAL);
-    }
-    _sockAddr = SockAddr(*parsedIp, port);
+    _sockAddr = SockAddr(ip, port);
     const sockaddr_in native = _sockAddr.ToNative();
 
     if (SOCKET_ERROR == connect(_socket, reinterpret_cast<const sockaddr*>(&native), sizeof(native)))

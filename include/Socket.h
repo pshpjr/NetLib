@@ -44,10 +44,10 @@ public:
     static void CleanupPlatform();
 
     psh::Result<NetError> Init();
-    psh::Result<NetError> Bind(const String& ip, psh::uint16 port);
+    psh::Result<NetError> Bind(Ip ip, Port port);
     psh::Result<NetError> Listen(int backlog) const;
     psh::Result<Socket, NetError> Accept() const;
-    psh::Result<NetError> Connect(const String& ip, psh::uint16 port);
+    psh::Result<NetError> Connect(Ip ip, Port port);
     psh::Result<NetError> CancelIO() const;
     psh::Result<NetError> Close();
 
@@ -68,8 +68,8 @@ public:
     psh::Result<NetError> SetSendBuffer(int size) const;
 
     SockAddr GetSockAddress() const;
-    String GetIp() const;
-    psh::uint16 GetPort() const;
+    Ip GetIp() const;
+    Port GetPort() const;
 
 private:
     //  _executor에 등록한다. 성공하면 _registered = true.

@@ -20,7 +20,6 @@
 #include "Profiler.h"
 #include "SendBuffer.h"
 #include "Session.h"
-#include "SettingParser.h"
 
 /*****************************/
 //			INIT
@@ -43,21 +42,6 @@ IOCP::IOCP()
 	{
 		session.SetOwner(*this);
 	}
-}
-
-bool IOCP::Init()
-{
-    _settingParser->Init();
-
-    _settingParser->GetValue(L"basic.ip", _ip);
-    _settingParser->GetValue(L"basic.port", _port);
-    _settingParser->GetValue(L"basic.backlog", _backlog);
-    _settingParser->GetValue(L"basic.runningThreads", _maxNetThread);
-    _settingParser->GetValue(L"basic.workerThreads", _maxWorkerThread);
-    _settingParser->GetValue(L"basic.staticKey", _staticKey);
-
-    fmt::print("{} {}\n", psh::util::WToS(_ip), _port);
-    return Init(_ip, _port, _backlog, _maxNetThread, _maxWorkerThread, _staticKey);
 }
 
 bool IOCP::ClientInit(psh::uint16 maxRunningThread
@@ -97,7 +81,7 @@ bool IOCP::ClientInit(psh::uint16 maxRunningThread
 }
 
 
-bool IOCP::Init(const String& ip
+bool IOCP::Init(Ip ip
                 , const Port port
                 , const psh::uint16 backlog
                 , const psh::uint16 maxRunningThread
@@ -368,7 +352,7 @@ void IOCP::ReleaseFreeIndex(unsigned short index)
     _freeIndex->Push(index);
 }
 
-psh::Result<SessionID, NetError> IOCP::GetClientSession(const String& ip, const Port port)
+psh::Result<SessionID, NetError> IOCP::GetClientSession(Ip ip, const Port port)
 {
     unsigned short index;
     GetFreeIndex(index);
@@ -934,7 +918,6 @@ NormalIOCP::NormalIOCP()
       , _port(0)
       , _freeIndex(std::make_unique<LockFreeStack<unsigned short>>())
       , _groupManager(nullptr)
-      , _settingParser(std::make_unique<SettingParser>())
       , _memMonitor(std::make_unique<MemoryUsage>())
       , _cpuMonitor(std::make_unique<CpuUsage>())
 {

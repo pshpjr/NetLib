@@ -52,12 +52,12 @@ void Session::SetSessionId(const SessionID sessionID)
 }
 
 // Connection
-String Session::GetIp() const
+Ip Session::GetIp() const
 {
 	return _socket.GetIp();
 }
 
-psh::uint16 Session::GetPort() const
+Port Session::GetPort() const
 {
 	return _socket.GetPort();
 }
