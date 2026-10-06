@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdlib>
-#include <new.h>
+#include <cstddef>
+#include <new>
 class Node;
 
 namespace psh

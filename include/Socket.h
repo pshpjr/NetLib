@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "BuildOption.h"
 #include "Buffer.h"
@@ -26,7 +26,7 @@ public:
     Socket();
 
     explicit Socket(Executor& executor);
-    Socket(Executor& executor, NativeHandle socket, SockAddr address);
+    Socket(Executor& executor, psh::NativeHandle socket, SockAddr address);
 
     //  등록된 상태면 Close()를 호출한다.
     ~Socket();
@@ -77,7 +77,7 @@ private:
 
     Executor* _executor = nullptr;
     bool _registered = false;
-    NativeHandle _beforeSocket = InvalidSocket;
+    psh::NativeHandle _beforeSocket = psh::InvalidHandle;
     std::unique_ptr<Executable> _sendExecutable;
     std::unique_ptr<Executable> _recvExecutable;
 };

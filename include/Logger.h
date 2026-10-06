@@ -27,13 +27,21 @@ public:
     void Write(const std::wstring_view type, const LogLevel level, const std::wstring_view format, const Args&... args)
     {
         if (static_cast<int>(_logLevel) > static_cast<int>(level))
-        {
             return;
-        }
 
-        WriteInternal(type, level, fmt::sprintf(
-            fmt::basic_string_view<wchar_t>(format.data(), format.size()),
-            FormatArg(args)...));
+        //  vsprintf는 rvalue를 받지 않아, FormatArg를 호출한 결과를 바로 전달할 수 없다.
+        //  아래 템플릿 WriteInternal을 활용해 포메팅한 문자열을 lvalue로 전달.
+
+        WriteInternal(type, level, fmt::wstring_view(format.data(), format.size()), FormatArg(args)...);
+    }
+
+
+    template <typename... Args>
+    void WriteInternal(std::wstring_view type, LogLevel level, fmt::wstring_view format, const Args&... args)
+    {
+        auto message = fmt::vsprintf(format, fmt::make_printf_args<wchar_t>(args...));
+
+        WriteInternal(type, level, std::wstring_view(message));
     }
 
 private:

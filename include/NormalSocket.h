@@ -1,24 +1,18 @@
 ﻿#pragma once
-#include "MyWindows.h"
 #include "SockAddr.h"
-
+#if defined(_WIN32) || defined(_WIN64)
+#include "MyWindows.h"
+#endif
 
 class NormalSocket
 {
 public:
-#if defined(_WIN32) || defined(_WIN64)
-    using NativeHandle = SOCKET;
-    static constexpr NativeHandle InvalidSocket = INVALID_SOCKET;
-#else
-    using NativeHandle = int;
-    static constexpr NativeHandle InvalidSocket = -1;
-#endif
-
-    NormalSocket(const NativeHandle socket, const SockAddr addr) : _sockAddr(addr)
-                                                              , _socket(socket)
+    NormalSocket(const psh::NativeHandle socket, const SockAddr addr) : _sockAddr(addr)
+                                                                        , _socket(socket)
     {
     }
 
+protected:
     SockAddr _sockAddr;
-    NativeHandle _socket;
+    psh::NativeHandle _socket;
 };

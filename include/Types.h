@@ -2,6 +2,10 @@
 #include "Utility.h"
 
 #include "Result.h"
+#if defined(_WIN32) || defined(_WIN64)
+#include "MyWindows.h"
+#endif
+
 
 #include <cstdint>
 #include <functional>
@@ -21,17 +25,13 @@ namespace psh
     using WCHAR = wchar_t;
 
 
-    using HANDLE = void*;
-    using HWND = HANDLE;
-    using HINSTANCE = HANDLE;
-    using HMODULE = HANDLE;
-    using HDC = HANDLE;
-    using HBITMAP = HANDLE;
-    using HBRUSH = HANDLE;
-    using HCURSOR = HANDLE;
-    using HICON = HANDLE;
-    using HMENU = HANDLE;
-    using HMONITOR = HANDLE;
+    #if defined(_WIN32) || defined(_WIN64)
+        using NativeHandle = SOCKET;
+        static constexpr NativeHandle InvalidHandle = INVALID_SOCKET;
+    #else
+        using NativeHandle = int;
+        static constexpr NativeHandle InvalidHandle = -1;
+    #endif
 
 
 

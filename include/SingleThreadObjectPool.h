@@ -2,7 +2,7 @@
 #include "Macro.h"
 
 #include <cstddef>
-#include <new.h>
+#include <new>
 class Node;
 
 template <typename Data, int DataId, bool UsePlacement>

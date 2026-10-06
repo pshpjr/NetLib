@@ -12,7 +12,7 @@ public:
         , _errNo(errNo)
         , _dur(dur) {}
 
-    [[nodiscard]] const char* what() const override
+    [[nodiscard]] const char* what() const noexcept override
     {
         return _errString.c_str();
     }
