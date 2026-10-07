@@ -25,6 +25,8 @@ namespace psh::util
 
     void SetThreadName(const char *threadName);
 
+    std::uint32_t GetCurrentThreadId() noexcept;
+
     inline void DebugBreak()
     {
 #ifdef _WIN32

@@ -15,8 +15,13 @@
 
 
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
+#else
+#define _GNU_SOURCE
+#include <sys/syscall.h>
+#include <unistd.h>
+#include <pthread.h>
 #endif
 
 namespace
@@ -66,9 +71,19 @@ std::wstring psh::util::SToW(std::string_view str)
 {
     if (str.empty()) return {};
     const auto bytes = ConvertEncoding(str, "WCHAR_T", "UTF-8");
+
     std::wstring result(bytes.size() / sizeof(wchar_t), L'\0');
     std::memcpy(result.data(), bytes.data(), bytes.size());
     return result;
+}
+
+std::uint32_t psh::util::GetCurrentThreadId() noexcept
+{
+#if defined(_WIN32) || defined(_WIN64)
+    return static_cast<std::uint32_t>(::GetCurrentThreadId());
+#else
+    return static_cast<std::uint32_t>(::syscall(SYS_gettid));
+#endif
 }
 
 void psh::util::SetThreadName(const char* threadName)
@@ -76,13 +91,17 @@ void psh::util::SetThreadName(const char* threadName)
     if (threadName == nullptr) return;
 #ifdef _WIN32
     const auto name = SToW(threadName);
-    (void)::SetThreadDescription(::GetCurrentThread(), name.c_str());
+
+    SetThreadDescription(::GetCurrentThread(), name.c_str());
 #else
     // Linux includes the terminating null in its 16-byte name limit.
     std::array<char, 16> name{};
+    
     const auto length = std::min(std::strlen(threadName), name.size() - 1);
+    
     std::memcpy(name.data(), threadName, length);
-    (void)::pthread_setname_np(::pthread_self(), name.data());
+    
+    pthread_setname_np(::pthread_self(), name.data());
 #endif
 }
 
