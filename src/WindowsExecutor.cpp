@@ -8,6 +8,8 @@
 #include <print>
 #include <stdexcept>
 
+#include <fmt/base.h>
+
 WindowsExecutor::WindowsExecutor() : WindowsExecutor(0)
 {
 
@@ -16,10 +18,8 @@ WindowsExecutor::WindowsExecutor() : WindowsExecutor(0)
 WindowsExecutor::WindowsExecutor(int maxConcurrent)
 {
     iocpHandle_ = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, maxConcurrent);
-    if (iocpHandle_ == nullptr)
-    {
+    if (iocpHandle_ == psh::InvalidHandle)
         throw std::runtime_error("Failed to create IOCP handle");
-    }
 }
 
 WindowsExecutor::~WindowsExecutor()
@@ -144,7 +144,7 @@ bool WindowsExecutor::Post(std::function<void()> func)
     return true;
 }
 
-NetError WindowsExecutor::RegisterHandle(HANDLE handle)
+NetError WindowsExecutor::RegisterHandle(psh::NativeHandle handle)
 {
     if (!TryAddWork())
         return NetError::FromNativeCode(NetError::InvalidExecutorCode);
@@ -164,7 +164,7 @@ void WindowsExecutor::UnregisterHandle()
     CompleteWork();
 }
 
-void WindowsExecutor::PostInternal(Executable& executable) const
+void WindowsExecutor::PostInternal(Executable& executable)
 {
     //  세션은 executor를 stop 한 후에도 postRelease 같은 걸 iocp에 post 함. 
     //  외부 노출용 post는 stop 이후 안 받지만, 내부적으로는 상관 없이 push 해줘야 함. 
@@ -206,10 +206,10 @@ void WindowsExecutor::ExecuteNoThrow(Executable& executable)
     }
     catch (const std::exception& e)
     {
-        std::println("Executor callback exception: {}", e.what());
+        fmt::println("Executor callback exception: {}", e.what());
     }
     catch (...)
     {
-        std::println("Executor callback unknown exception");
+        fmt::println("Executor callback unknown exception");
     }
 }

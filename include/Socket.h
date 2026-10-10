@@ -26,7 +26,7 @@ public:
     Socket();
 
     explicit Socket(Executor& executor);
-    Socket(Executor& executor, psh::NativeHandle socket, SockAddr address);
+    Socket(Executor& executor, psh::NativeSocket socket, SockAddr address);
 
     //  등록된 상태면 Close()를 호출한다.
     ~Socket();
@@ -77,7 +77,7 @@ private:
 
     Executor* _executor = nullptr;
     bool _registered = false;
-    psh::NativeHandle _beforeSocket = psh::InvalidHandle;
+    psh::NativeSocket _beforeSocket = psh::InvalidSocket;
     std::unique_ptr<Executable> _sendExecutable;
     std::unique_ptr<Executable> _recvExecutable;
 };

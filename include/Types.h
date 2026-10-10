@@ -26,8 +26,12 @@ namespace psh
 
 
     #if defined(_WIN32) || defined(_WIN64)
-        using NativeHandle = SOCKET;
-        static constexpr NativeHandle InvalidHandle = INVALID_SOCKET;
+    using NativeHandle = HANDLE;
+    using NativeSocket = SOCKET;
+
+    //  handle은 포인터 연산이라 constexpr을 사용할 수 없다. 
+    static inline const NativeHandle InvalidHandle = INVALID_HANDLE_VALUE;
+    static constexpr NativeSocket InvalidSocket = INVALID_SOCKET;
     #else
         using NativeHandle = int;
         static constexpr NativeHandle InvalidHandle = -1;
