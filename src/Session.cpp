@@ -169,6 +169,24 @@ void Session::SetSocket(Socket&& socket)
 
                 switch (error)
                 {
+                case NetErrc::PartialSend:
+                {
+                    std::size_t requestedBytes = 0;
+                    const auto packetCount = _dataNotSend.load();
+                    for (int i = 0; i < packetCount; ++i)
+                        requestedBytes += _sendingQ[i]->SendDataSize();
+
+                    const bool closeRequested = !_connect.load();
+                    Close();
+                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                                   L"Partial send sessionID : %llu, requestedBytes : %zu, "
+                                   L"transferredBytes : %zu, closeRequested : %d, "
+                                   L"cause : unavailable, action : close",
+                                   static_cast<unsigned long long>(GetSessionId().id),
+                                   requestedBytes, transferred, static_cast<int>(closeRequested));
+                    break;
+                }
+
                 case NetErrc::ConnectionReset:
                     break;
 

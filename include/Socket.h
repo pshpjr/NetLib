@@ -57,9 +57,10 @@ public:
     bool IsValid() const;
 
 
-    //  send의 경우 전달 받은 버퍼를 전부 송신 한 후 콜백 발생
+    // send 성공 콜백은 전체 전송 완료 시 발생한다. 부분 완료는 PartialSend와 실제 전송량을 전달한다.
     void SetCallbacks(IoCallback recvCallback, IoCallback sendCallback);
     psh::Result<NetError> Send(SocketSendBufferSpan buffers) const;
+    //  buffer 길이는 int8::max까지로 제한
     psh::Result<NetError> Recv(SocketRecvBufferSpan buffers) const;
 
     NetError LastError();
@@ -72,6 +73,10 @@ public:
     Port GetPort() const;
 
 private:
+#ifndef _WIN32
+    void OnSendComplete(NetError error, std::size_t transferred);
+#endif
+
     //  _executor에 등록한다. 성공하면 _registered = true.
     psh::Result<NetError> RegisterToExecutor();
 

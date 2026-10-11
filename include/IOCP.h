@@ -52,7 +52,7 @@ public:
     void SetMaxPacketSize(int size);
     void SetTimeout(SessionID sessionId, int timeoutMillisecond);
     void SetDefaultTimeout(unsigned int timeoutMillisecond);
-    void PostExecutable(Executable& exe) const;
+    void PostExecutable(Executable& exe);
 
     void SetSessionStaticKey(SessionID id, char staticKey);
     void HandleInput();

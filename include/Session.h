@@ -25,7 +25,7 @@ class Session
 	static constexpr unsigned long long ID_MASK = 0x000'7FFF'FFFF'FFFF;
 	static constexpr unsigned long long INDEX_MASK = 0x7FFF'8000'0000'0000;
 	static constexpr long RELEASE_FLAG = 0x0010'0000;
-	static constexpr int MAX_SEND_COUNT = 512;
+	static constexpr int MAX_SEND_COUNT = 128;
 
 #ifdef SESSION_DEBUG
 	static const int debugSize = 2000;

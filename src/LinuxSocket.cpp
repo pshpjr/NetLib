@@ -36,6 +36,8 @@ NetErrc NetError::ToNetErrc(const int nativeCode)
         return NetErrc::Pending;
     case EINTR:
         return NetErrc::Interrupted;
+    case EINVAL:
+        return NetErrc::InvalidParameter;
     case ECONNRESET:
     case EPIPE:
         return NetErrc::ConnectionReset;
@@ -66,6 +68,8 @@ NetErrc NetError::ToNetErrc(const int nativeCode)
         return NetErrc::ResourceExhausted;
     case InvalidExecutorCode:
         return NetErrc::InvalidExecutor;
+    case PartialSendCode:
+        return NetErrc::PartialSend;
     default:
         return NetErrc::Unknown;
     }
@@ -98,6 +102,9 @@ Socket::Socket(Executor& executor, const psh::NativeHandle socket, const SockAdd
     , _sendExecutable(std::make_unique<Executable>(Executable::IoType::Send))
     , _recvExecutable(std::make_unique<Executable>(Executable::IoType::Recv))
 {
+    // 콜백의 this 포인터만 설정하기 위해 bind를 사용한다.
+    _sendExecutable->SetCallback(
+        std::bind_front(&Socket::OnSendComplete, this));
 }
 
 Socket::~Socket()
@@ -109,7 +116,7 @@ Socket::~Socket()
 }
 
 Socket::Socket(Socket&& other) noexcept
-    : LinuxSocket(other)
+    : LinuxSocket(std::move(other))
     , _executor(std::exchange(other._executor, nullptr))
     , _registered(std::exchange(other._registered, false))
     , _beforeSocket(other._beforeSocket)
@@ -117,6 +124,12 @@ Socket::Socket(Socket&& other) noexcept
     , _recvExecutable(std::move(other._recvExecutable))
 {
     other._socket = psh::InvalidHandle;
+    if (_sendExecutable)
+    {
+        // 이동 후 콜백의 this 포인터만 수정하기 위해 bind를 사용한다.
+        _sendExecutable->SetCallback(
+            std::bind_front(&Socket::OnSendComplete, this));
+    }
 }
 
 Socket& Socket::operator=(Socket&& other) noexcept
@@ -128,7 +141,7 @@ Socket& Socket::operator=(Socket&& other) noexcept
             Close();
         }
 
-        LinuxSocket::operator=(other);
+        LinuxSocket::operator=(std::move(other));
         _executor = other._executor;
         _registered = other._registered;
         _beforeSocket = other._beforeSocket;
@@ -138,6 +151,12 @@ Socket& Socket::operator=(Socket&& other) noexcept
         other._socket = psh::InvalidHandle;
         other._executor = nullptr;
         other._registered = false;
+        if (_sendExecutable)
+        {
+            // 이동 후 콜백의 this 포인터만 수정하기 위해 bind를 사용한다.
+            _sendExecutable->SetCallback(
+                std::bind_front(&Socket::OnSendComplete, this));
+        }
     }
     return *this;
 }
@@ -280,17 +299,65 @@ void Socket::SetCallbacks(IoCallback recvCallback, IoCallback sendCallback)
     if (_recvExecutable)
         _recvExecutable->SetCallback(std::move(recvCallback));
     if (_sendExecutable)
-        _sendExecutable->SetCallback(std::move(sendCallback));
+        _sendCallback = std::move(sendCallback);
+}
+
+void Socket::OnSendComplete(NetError error, std::size_t transferred)
+{
+    if (error != NetErrc::None)
+    {
+        if (_sendCallback)
+            _sendCallback(error, transferred);
+        return;
+    }
+
+    // MSG_WAITALL도 오류나 취소 시 원인 대신 부분 전송량을 반환할 수 있다.
+    if (transferred < _sendState.requestedBytes)
+    {
+        _sendCallback(NetError::FromNativeCode(NetError::PartialSendCode), transferred);
+        return;
+    }
+
+    _sendCallback(NetError{}, transferred);
 }
 
 psh::Result<NetError> Socket::Send(SocketSendBufferSpan buffers) const
 {
-    return Unsupported();
+    _sendExecutable->Clear();
+    _sendState.Prepare(buffers);
+
+    io_uring_sqe sqe{};
+    io_uring_prep_sendmsg(&sqe, _socket, &_sendState.message, MSG_NOSIGNAL | MSG_WAITALL);
+
+    io_uring_sqe_set_data(&sqe, _sendExecutable.get());
+    _executor->ioUring_.RequestIo(sqe);
+
+    return NetError::FromNativeCode(EINPROGRESS);
 }
 
 psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers) const
 {
-    return Unsupported();
+    _recvExecutable->Clear();
+    //  int8 이상은 안 보내는 제한
+    if (buffers.empty() || buffers.size() > (std::numeric_limits<psh::int8>::max)())
+    {
+        auto error = NetError::FromNativeCode(EINVAL);
+        _recvExecutable->SetResult(error, 0);
+        _executor->PostInternal(*_recvExecutable);
+        return error;
+    }
+
+    _recvExecutable->Clear();
+    _recvState.Prepare(buffers);
+
+    io_uring_sqe sqe{};
+
+    io_uring_prep_recvmsg(&sqe, _socket, &_recvState.message, 0);
+    io_uring_sqe_set_data(&sqe, _recvExecutable.get());
+
+    _executor->ioUring_.RequestIo(sqe);
+
+    return true;
 }
 
 NetError Socket::LastError()

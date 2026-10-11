@@ -26,6 +26,7 @@ enum class NetErrc
     InvalidExecutor,
     InvalidParameter,
     Unknown,
+    PartialSend,
 };
 
 struct NetError
@@ -38,6 +39,9 @@ struct NetError
     //  errno는 작은 양수(수백 이하)라 이 값과 겹치지 않는다.
     static constexpr int InvalidExecutorCode = 0x2000'0001;
 #endif
+
+    // 전체 전송에 실패했지만 OS가 부분 전송량만 반환한 경우.
+    static constexpr int PartialSendCode = 0x2000'0002;
 
     int NativeCode = 0;
 

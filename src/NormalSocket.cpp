@@ -50,6 +50,8 @@ NetErrc NetError::ToNetErrc(int nativeCode)
         return NetErrc::ResourceExhausted;
     case NetError::InvalidExecutorCode:
         return NetErrc::InvalidExecutor;
+    case NetError::PartialSendCode:
+        return NetErrc::PartialSend;
     default:
         return NetErrc::Unknown;
     }
@@ -209,7 +211,7 @@ psh::Result<NetError> Socket::Recv(SocketRecvBufferSpan buffers) const
 {
     DWORD flags = 0;
     _recvExecutable->Clear();
-    if (buffers.empty() || buffers.size() > (std::numeric_limits<DWORD>::max)())
+    if (buffers.empty() || buffers.size() > (std::numeric_limits<psh::uint16>::max)())
     {
         auto error = NetError::FromNativeCode(WSAEINVAL);
         _recvExecutable->SetResult(error, 0);

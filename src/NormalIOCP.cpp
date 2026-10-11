@@ -471,7 +471,7 @@ void IOCP::SetMaxPacketSize(const int size)
 			ThreadPool
 *****************************/
 
-void IOCP::PostExecutable(Executable& exe) const
+void IOCP::PostExecutable(Executable& exe)
 {
     _executor.PostInternal(exe);
 }

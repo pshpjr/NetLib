@@ -34,7 +34,9 @@ namespace psh
     static constexpr NativeSocket InvalidSocket = INVALID_SOCKET;
     #else
         using NativeHandle = int;
+        using NativeSocket = int;
         static constexpr NativeHandle InvalidHandle = -1;
+        static constexpr NativeSocket InvalidSocket = -1;
     #endif
 
 
