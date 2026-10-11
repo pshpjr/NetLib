@@ -580,7 +580,15 @@ void Session::RealSend()
 
 	_dataNotSend = sendPackets;
 
-	_socket.Send({sendBuffers, sendPackets});
+	const auto beforeSessionId = _sessionId;
+	if (const auto sendResult = _socket.Send({sendBuffers, sendPackets});
+		sendResult.HasError() && sendResult.Error() == NetErrc::Pending)
+	{
+		if (_connect == false)
+		{
+			_owner->DisconnectSession(beforeSessionId);
+		}
+	}
 }
 
 // Timeout
