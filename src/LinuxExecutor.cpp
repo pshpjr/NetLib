@@ -1,4 +1,5 @@
 #include "LinuxExecutor.h"
+#include "ExceptionTrace.h"
 
 #include "CoreGlobal.h"
 #include "Logger.h"
@@ -35,7 +36,10 @@ IoUring::IoUring()
         throw std::runtime_error("Failed to initialize io_uring");
     }
 
-    uringPollThread_ = std::thread([this] { Loop(); });
+    uringPollThread_ = std::thread([this]
+    {
+        psh::util::RunWithTrace("io_uring polling thread", [this] { Loop(); });
+    });
 }
 
 IoUring::~IoUring()
@@ -445,7 +449,10 @@ void LinuxExecutor::ExecuteNoThrow(Executable& executable)
 {
     try
     {
-        executable.Execute();
+        psh::util::RunWithTrace("LinuxExecutor::ExecuteNoThrow", [&]
+        {
+            executable.Execute();
+        });
     }
     catch (const std::exception& e)
     {

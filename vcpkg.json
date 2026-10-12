@@ -2,6 +2,7 @@
   "name": "net-lib",
   "version-string": "0.1",
   "dependencies": [
+    "cpptrace",
     "curl",
     "libmysql",
     {

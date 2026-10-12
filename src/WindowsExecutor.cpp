@@ -1,6 +1,7 @@
 ﻿#include "WindowsExecutor.h"
 
 #include "Executable.h"
+#include "ExceptionTrace.h"
 #include "Profiler.h"
 #include "SocketTypes.h"
 #include "Utility.h"
@@ -202,7 +203,10 @@ void WindowsExecutor::ExecuteNoThrow(Executable& executable)
 {
     try
     {
-        executable.Execute();
+        psh::util::RunWithTrace("WindowsExecutor::ExecuteNoThrow", [&]
+        {
+            executable.Execute();
+        });
     }
     catch (const std::exception& e)
     {

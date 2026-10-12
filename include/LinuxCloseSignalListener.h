@@ -1,4 +1,5 @@
 #pragma once
+#include "ExceptionTrace.h"
 
 #include <pthread.h>
 #include <signal.h>
@@ -32,25 +33,28 @@ namespace psh::util
                 thread_ = std::jthread(
                     [mask, func = std::move(func)](std::stop_token token)
                     {
-                        while (!token.stop_requested())
+                        RunWithTrace("Shutdown listener thread", [&]
                         {
-                            timespec timeout{0, 100'000'000};
-                            auto signal = sigtimedwait(&mask, nullptr, &timeout);
-
-                            if (signal > 0 && !token.stop_requested())
+                            while (!token.stop_requested())
                             {
-                                func();
-                                continue;
+                                timespec timeout{0, 100'000'000};
+                                auto signal = sigtimedwait(&mask, nullptr, &timeout);
+
+                                if (signal > 0 && !token.stop_requested())
+                                {
+                                    func();
+                                    continue;
+                                }
+
+                                //  정상: 타임아웃 또는 다른 핸들러에서 처리할 시그널이 켜짐
+                                const int error = errno;
+                                if (error == EAGAIN || error == EINTR)
+                                    continue;
+
+                                //  비정상적인 경우
+                                return;
                             }
-
-                            //  정상: 타임아웃 또는 다른 핸들러에서 처리할 시그널이 켜짐
-                            const int error = errno;
-                            if (error == EAGAIN || error == EINTR)
-                                continue;
-
-                            //  비정상적인 경우
-                            return;
-                        }
+                        });
                     });
             }
             catch (...)

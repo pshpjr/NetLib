@@ -1,4 +1,5 @@
 #pragma once
+#include "ExceptionTrace.h"
 #include <thread>
 
 
@@ -24,7 +25,10 @@ namespace psh
                       {
                           thread::detail::isLibThread = true;
 
-                          std::invoke(func, std::forward<InnerArgs>(innerArgs)...);
+                          util::RunWithTrace("IOCP thread", [&]
+                          {
+                              std::invoke(func, std::forward<InnerArgs>(innerArgs)...);
+                          });
 
                           thread::detail::isLibThread = false;
                       },
