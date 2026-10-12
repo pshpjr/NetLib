@@ -202,6 +202,11 @@ psh::Result<NetError> Socket::Listen(int backlog) const
     return true;
 }
 
+void Socket::StopListening()
+{
+    ::shutdown(_socket, SHUT_RDWR);
+}
+
 psh::Result<Socket, NetError> Socket::Accept() const
 {
     if (_executor == nullptr)

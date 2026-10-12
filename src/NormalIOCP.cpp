@@ -30,6 +30,7 @@ IOCP::IOCP()
 	if (Socket::InitPlatform().HasError())
 	{
 		_isRunning = false;
+        throw std::runtime_error("Failed to initialize platform");
 	}
 
 	for (psh::int16 i = MAX_SESSIONS - 1; i >= 0; i--)
@@ -170,6 +171,7 @@ void IOCP::Stop()
     }
     _startSignal.store(true);
     _startSignal.notify_all();
+    _listenSocket->StopListening();
     _listenSocket->Close();
 
     //  신규 Post와 소켓 등록을 먼저 막는다. 이후 accept된 소켓은 등록이 거부된다.
@@ -702,6 +704,10 @@ void IOCP::AcceptThread()
     {
         auto acceptResult = _listenSocket->Accept();
 
+        //  서버 중단하려고 accept 중단한 경우
+        if (!_isRunning.load())
+            break;
+
         if (acceptResult.HasError())
         {
             //accept 서버 닫으려고 중단한 경우.
@@ -901,6 +907,7 @@ NormalIOCP::~NormalIOCP()
     _startSignal.store(true);
     _startSignal.notify_all();
     _listenSocket->Close();
+    _listenSocket->StopListening();
     _executor.Stop();
     for (auto& thread : _threadArray)
     {

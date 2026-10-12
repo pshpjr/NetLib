@@ -12,13 +12,13 @@
 #include <system_error>
 #include <cstring>
 
-
-
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE 1
+#endif
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
 #else
-#define _GNU_SOURCE
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <pthread.h>
