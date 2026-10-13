@@ -379,25 +379,33 @@ psh::Result<SessionID, NetError> IOCP::GetClientSession(Ip ip, const Port port)
         return connectionResult.Error();
     }
 
-    _sessions[index].SetSocket(std::move(s));
+    auto& session = InitSession(index, std::move(s));
+    session.SetTimeout(0);
+    session.RecvNotIncrease();
 
+    ++_sessionCount;
+    return session.GetSessionId();
+}
+
+Session& IOCP::InitSession(const unsigned short index, Socket&& socket)
+{
+    // accept 스레드와 GetClientSession이 동시에 올릴 수 있다. 클라이언트 연결은 드물고 보통 accept 전에 하며,
+    // index가 겹치지 않으므로 id 부분이 중복돼도 SessionID는 구분된다.
     SessionID sessionId{};
-
-    //클라이언트 사용이 많지 않고, 계속 재접속 할 거 아니고, 보통 accept 전에 하니까 그냥 풀어둬도 될 것 같음.
-    //인덱스는 안 겹침. index 전 부분은 중복 생기거나 겹치긴 할텐데
     sessionId.id = ++g_sessionId;
     sessionId.index = index;
 
-    _sessions[index].IncreaseRef(L"AcceptInc");
-    _sessions[index].SetSessionId(sessionId);
-    _sessions[index].OffReleaseFlag();
-    _sessions[index].SetConnect();
-    _sessions[index].SetTimeout(0);
-    _sessions[index].SetNetSession(_staticKey);
-    _sessions[index].RecvNotIncrease();
+    // Reset이 이전 소켓을 닫고 타임아웃을 기본값으로 되돌리므로 소켓·타임아웃 설정보다 먼저 한다.
+    auto& session = _sessions[index];
+    session.Reset();
 
-    ++_sessionCount;
-    return sessionId;
+    session.IncreaseRef(L"AcceptInc");
+    session.SetSessionId(sessionId);
+    session.SetSocket(std::move(socket));
+    session.SetNetSession(_staticKey);
+    session.OffReleaseFlag();
+    session.SetConnect();
+    return session;
 }
 
 bool IOCP::IsValidSession(const SessionID id)
@@ -747,20 +755,7 @@ void IOCP::AcceptThread()
             continue;
         }
 
-        SessionID sessionID{};
-        sessionID.id = ++g_sessionId;
-        sessionID.index = sessionIndex;
-
-        auto& session = _sessions[sessionIndex];
-        session.Reset();
-
-        session.IncreaseRef(L"AcceptInc");
-        session.SetSessionId(sessionID);
-        session.SetSocket(std::move(clientSocket));
-        session.SetNetSession(_staticKey);
-        session.OffReleaseFlag();
-
-        session._connect = true;
+        auto& session = InitSession(sessionIndex, std::move(clientSocket));
         OnConnect(session.GetSessionId(), session.GetAddress());
         session.RecvNotIncrease();
 

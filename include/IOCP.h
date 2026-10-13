@@ -152,6 +152,8 @@ public:
     bool CheckPostRelease(SessionID id, GroupID groupId);
 
 private:
+    // 빈 슬롯의 세션을 리셋하고 새 ID·소켓으로 연결 상태까지 만든다. recv는 호출한 쪽이 건다.
+    Session& InitSession(unsigned short index, Socket&& socket);
     void GroupSessionDisconnect(Session* session);
     void postReleaseSession(SessionID id);
 
