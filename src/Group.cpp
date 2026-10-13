@@ -227,13 +227,14 @@ bool Group::HandleJob()
 				 * 이 경우 패킷이 계속 들어오면 뒤애 애들 처리가 너무 느려지는 문제 발생
 				 * 전체 처리량이 줄어들더라도 반응성을 위해 수정함.
 				 */
-				if (const char sKey = session->_staticKey)
+				session->setRecvHandled(false);
+				if (session->_staticKey)
 				{
-					RecvHandler<NetHeader>(*session, _iocp, job.transferred);
+					session->RecvHandler<NetHeader>(this);
 				}
 				else
 				{
-					RecvHandler<LANHeader>(*session, _iocp, job.transferred);
+					session->RecvHandler<LANHeader>(this);
 				}
 
 				session->Release(L"HandlePacketRelease");
@@ -339,88 +340,4 @@ void Group::MoveSession(const SessionID id, const GroupID dst) const
 bool Group::hasJob() const
 {
 	return _jobs->Size() > 0;
-}
-
-template <typename Header>
-void Group::RecvHandler(Session& session, void* iocp, std::size_t transferred)
-{
-	IOCP& server = *static_cast<IOCP*>(iocp);
-	int loopCount = 0;
-	std::size_t handleBytes = 0;
-
-	RingBuffer& recvQ = session._recvQ;
-	session.setRecvHandled(false);
-	while (true)
-	{
-		if (session.GetGroupID() != _groupId)
-		{
-			// Write(session.GetSessionId(), Other, session.GetGroupID(), L"Not this
-			// Group");
-			break;
-		}
-
-		if (recvQ.Size() < sizeof(Header))
-		{
-			break;
-		}
-
-		Header header;
-		recvQ.Peek(reinterpret_cast<char*>(&header), sizeof(Header));
-
-		if constexpr (std::is_same_v<Header, NetHeader>)
-		{
-			if (header.code != dfPACKET_CODE)
-			{
-				int frontIndex = recvQ.GetFrontIndex();
-				SessionID id = session.GetSessionId();
-				_groupLogger->Write(
-					L"Disconnect", Logger::LogLevel::Debug,
-					L"Group WrongPacketCode, SessionID : %d\n frontIndex: %d \n", id,
-					frontIndex);
-				session.Close();
-				break;
-			}
-
-			if (header.len > session._maxPacketLen)
-			{
-				int frontIndex = recvQ.GetFrontIndex();
-				SessionID id = session.GetSessionId();
-				_groupLogger->Write(
-					L"Disconnect", Logger::LogLevel::Debug,
-					L"Group WrongPacketLen, SessionID : %d\n index: %d \n", id,
-					frontIndex);
-				session.Close();
-				break;
-			}
-		}
-		const int totPacketSize = header.len + sizeof(Header);
-		if (recvQ.Size() < totPacketSize)
-		{
-			break;
-		}
-
-		RecvBuffer buffer(&recvQ, header.len);
-		if constexpr (std::is_same_v<Header, NetHeader>)
-		{
-			recvQ.Decode(session._staticKey);
-
-			if (!recvQ.ChecksumValid())
-			{
-				_groupLogger->Write(L"Disconnect", Logger::LogLevel::Debug,
-				                    L"Group Invalid Checksum %d",
-				                    session.GetSessionId());
-				session.Close();
-				break;
-			}
-		}
-		loopCount++;
-		recvQ.Dequeue(sizeof(Header));
-		onRecvPacket(session, buffer);
-		handleBytes += totPacketSize;
-	}
-
-	if (loopCount > 0)
-	{
-		server.IncreaseRecvCount(loopCount);
-	}
 }

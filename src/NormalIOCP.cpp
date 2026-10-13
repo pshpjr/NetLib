@@ -18,6 +18,7 @@
 #include "IOCP.h"
 #include "LockFreeStack.h"
 #include "Profiler.h"
+#include "RecvBuffer.h"
 #include "SendBuffer.h"
 #include "Session.h"
 
@@ -450,6 +451,7 @@ void IOCP::onRecvPacket(const Session& session, RecvBuffer& buffer)
     try
     {
         OnRecvPacket(session._sessionId, buffer);
+        ASSERT_CRASH(buffer.CanPopSize() == 0, "can pop from recv buffer");
     }
     catch (const std::invalid_argument& err)
     {

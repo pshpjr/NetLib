@@ -142,11 +142,11 @@ void Session::SetSocket(Socket&& socket)
             }
             else if (_staticKey)
             {
-                RecvHandler<NetHeader>(_owner);
+                RecvHandler<NetHeader>(nullptr);
             }
             else
             {
-                RecvHandler<LANHeader>(_owner);
+                RecvHandler<LANHeader>(nullptr);
             }
             RecvNotIncrease();
         }
@@ -656,90 +656,83 @@ void Session::WriteContentLog(unsigned int type)
 }
 
 // Receive
+// group이 nullptr이면 기본 그룹(IOCP)에서 처리한다.
 template <typename Header>
-void Session::RecvHandler(void* iocp)
+void Session::RecvHandler(Group* group)
 {
-	Session& session = *this;
-	IOCP& server = *static_cast<IOCP*>(iocp);
+	const auto expectedGroup = group ? group->GetGroupID() : GroupManager::BaseGroupID();
+	Logger& logger = group ? *group->_groupLogger : *gLogger;
 	int loopCount = 0;
 
-	RingBuffer& recvQ = session._recvQ;
 	while (true)
 	{
-		if (session.GetGroupID() != GroupManager::BaseGroupID())
+		if (GetGroupID() != expectedGroup)
 		{
 			break;
 		}
 
-		if (recvQ.Size() < sizeof(Header))
+		if (_recvQ.Size() < sizeof(Header))
 		{
 			break;
 		}
-
 
 		Header header;
-		recvQ.Peek(reinterpret_cast<char*>(&header), sizeof(Header));
+		_recvQ.Peek(reinterpret_cast<char*>(&header), sizeof(Header));
 
 		if constexpr (std::is_same_v<Header, NetHeader>)
 		{
 			if (header.code != dfPACKET_CODE)
 			{
-				int frontIndex = recvQ.GetFrontIndex();
-				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketCode id : %d\n index: %d \n"
-				               , session.GetSessionId(), frontIndex);
-				session.Close();
+				int frontIndex = _recvQ.GetFrontIndex();
+				logger.Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketCode id : %d\n index: %d \n"
+				             , GetSessionId(), frontIndex);
+				Close();
 				break;
 			}
 
-			if (header.len > session._maxPacketLen)
+			if (header.len > _maxPacketLen)
 			{
-				int frontIndex = recvQ.GetFrontIndex();
-				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketLen id : %d\n index: %d \n"
-				               , session.GetSessionId(), frontIndex);
-				session.Close();
+				int frontIndex = _recvQ.GetFrontIndex();
+				logger.Write(L"Disconnect", Logger::LogLevel::Debug, L"WrongPacketLen id : %d\n index: %d \n"
+				             , GetSessionId(), frontIndex);
+				Close();
 				break;
 			}
 		}
-
-		if (header.len > recvQ.Size())
-		{
-			break;
-		}
-
 
 		if (const int totPacketSize = header.len + sizeof(Header);
-			recvQ.Size() < totPacketSize)
+			_recvQ.Size() < totPacketSize)
 		{
 			break;
 		}
 
-		RecvBuffer buffer(&recvQ, header.len);
-		//auto& buffer = *RecvBuffer::Alloc(&recvQ,header.len);
+		RecvBuffer buffer(&_recvQ, header.len);
 
 		if constexpr (std::is_same_v<Header, NetHeader>)
 		{
-			recvQ.Decode(session._staticKey);
+			_recvQ.Decode(_staticKey);
 
-			if (!recvQ.ChecksumValid())
+			if (!_recvQ.ChecksumValid())
 			{
-				gLogger->Write(L"Disconnect", Logger::LogLevel::Debug, L"Recv Invalid Checksum id : %d"
-				               , session.GetSessionId());
-				session.Close();
+				logger.Write(L"Disconnect", Logger::LogLevel::Debug, L"Recv Invalid Checksum id : %d"
+				             , GetSessionId());
+				Close();
 				break;
 			}
 		}
 		loopCount++;
-		recvQ.Dequeue(sizeof(Header));
-		server.onRecvPacket(session, buffer);
-
-		ASSERT_CRASH(buffer.CanPopSize() == 0, "UnuseData");
+		_recvQ.Dequeue(sizeof(Header));
+		if (group)
+			group->onRecvPacket(*this, buffer);
+		else
+			_owner->onRecvPacket(*this, buffer);
 	}
 
 	if (loopCount > 0)
 	{
-		server.IncreaseRecvCount(loopCount);
+		_owner->IncreaseRecvCount(loopCount);
 	}
 }
 
-template void Session::RecvHandler<NetHeader>(void* iocp);
-template void Session::RecvHandler<LANHeader>(void* iocp);
+template void Session::RecvHandler<NetHeader>(Group* group);
+template void Session::RecvHandler<LANHeader>(Group* group);

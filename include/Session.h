@@ -124,7 +124,7 @@ private:
 
 	// Receive
 	template <typename Header>
-	void RecvHandler(void* iocp);
+	void RecvHandler(Group* group);
 
 	// Timeout
 	std::optional<timeoutInfo> CheckTimeout(std::chrono::steady_clock::time_point now);

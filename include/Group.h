@@ -24,6 +24,7 @@ class Group
 {
 
     friend class GroupManager;
+    friend class Session;
 public:
     Group();
     virtual ~Group();
@@ -135,9 +136,6 @@ private:
     [[nodiscard]] bool hasJob() const;
 
     bool HandleJob();
-
-    template <typename Header>
-    void RecvHandler(Session& session, void* iocp, std::size_t transferred);
 
     void onRecvPacket(const Session& session, RecvBuffer& buffer);
     std::unique_ptr<Logger> _groupLogger;
