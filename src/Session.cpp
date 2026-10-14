@@ -754,6 +754,13 @@ void Session::RecvHandler(Group* group)
 		Header header;
 		_recvQ.Peek(reinterpret_cast<char*>(&header), sizeof(Header));
 
+		if (header.len > _recvQ.GetBufferSize() - 1 - sizeof(Header))
+        {
+            logger.Write(L"Disconnect", Logger::LogLevel::Debug, L"LargePacket id : %d\n", GetSessionId());
+            Close();
+            break;
+        }
+
 		if constexpr (std::is_same_v<Header, NetHeader>)
 		{
 			if (header.code != dfPACKET_CODE)
