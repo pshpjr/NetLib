@@ -90,10 +90,14 @@ public:
     template <typename T>
     SendBufferImpl& operator <<(const T& value);
     SendBufferImpl& operator <<(wchar_t* value);
+    SendBufferImpl& operator <<(const wchar_t* value);
+    SendBufferImpl& operator <<(wchar_t value);
     SendBufferImpl& operator <<(psh::LPCWSTR value);
     SendBufferImpl& operator <<(const String& value);
 
     void SetWstr(psh::LPCWSTR arr, int size);
+    void SetWstr(const wchar_t* arr, int size);
+    void SetUtf16(std::u16string_view value);
     void SetCstr(psh::LPCSTR arr, int size);
 
     int CanPushSize() const

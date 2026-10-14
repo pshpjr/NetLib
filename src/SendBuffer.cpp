@@ -49,6 +49,16 @@ void SendBuffer::SetWstr(psh::LPCWSTR arr, int size)
 	buffer->SetWstr(arr, size);
 }
 
+void SendBuffer::SetWstr(const wchar_t* arr, int size)
+{
+    buffer->SetWstr(arr, size);
+}
+
+void SendBuffer::SetUtf16(std::u16string_view value)
+{
+    buffer->SetUtf16(value);
+}
+
 void SendBuffer::SetCstr(psh::LPCSTR arr, int size)
 {
 	buffer->SetCstr(arr, size);

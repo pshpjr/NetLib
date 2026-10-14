@@ -1,8 +1,10 @@
 ﻿#include "SendBufferImpl.h"
 #include "stdafx.h"
+#include "Utf16.h"
 
 #include <cstring>
 #include <cwchar>
+#include <limits>
 
 
 TlsPool<SendBufferImpl, 0> SendBufferImpl::_pool(SERIAL_INIT_SIZE, SERIAL_INIT_MULTIPLIER);
@@ -101,35 +103,68 @@ void SendBufferImpl::Encode(const char staticKey)
 
 SendBufferImpl& SendBufferImpl::operator<<(wchar_t* const value)
 {
-    //insert null terminated string to buffer
-    const size_t strlen = std::wcslen(value) + 1;
-    CanPush(strlen * sizeof(wchar_t));
-    std::memcpy(_rear, value, strlen * sizeof(wchar_t));
-    _rear += strlen * sizeof(wchar_t);
+    return operator<<(static_cast<const wchar_t*>(value));
+}
+
+SendBufferImpl& SendBufferImpl::operator<<(const wchar_t* value)
+{
+    if (value == nullptr)
+        throw std::invalid_argument("Null wide string");
+    auto encoded = psh::util::WideToUtf16(value);
+    encoded.push_back(u'\0');
+    SetUtf16(encoded);
+    return *this;
+}
+
+SendBufferImpl& SendBufferImpl::operator<<(wchar_t value)
+{
+    const auto encoded = psh::util::WideToUtf16(std::wstring_view(&value, 1));
+    if (encoded.size() != 1)
+        throw std::invalid_argument("Wide character requires two UTF-16 code units");
+    SetUtf16(encoded);
     return *this;
 }
 
 SendBufferImpl& SendBufferImpl::operator<<(const psh::LPCWSTR value)
 {
     //insert null terminated string to buffer
-    SetWstr(value, static_cast<int>(value.size()));
-    operator<<(wchar_t{});
+    auto encoded = psh::util::WideToUtf16(value);
+    encoded.push_back(u'\0');
+    SetUtf16(encoded);
     return *this;
 }
 
 SendBufferImpl& SendBufferImpl::operator<<(const String& value)
 {
-    operator<<(static_cast<psh::uint16>(value.length()));
-    SetWstr(value.c_str(), value.length());
+    const auto encoded = psh::util::WideToUtf16(value);
+    if (encoded.size() > std::numeric_limits<psh::uint16>::max())
+        throw std::invalid_argument("UTF-16 string is too long");
+    CanPush(sizeof(psh::uint16) + encoded.size() * 2);
+    operator<<(static_cast<psh::uint16>(encoded.size()));
+    SetUtf16(encoded);
 
     return *this;
 }
 
 void SendBufferImpl::SetWstr(const psh::LPCWSTR arr, const int size)
 {
-    CanPush(size * sizeof(wchar_t));
-    std::memcpy(_rear, arr.data(), size * sizeof(wchar_t));
-    _rear += size * sizeof(wchar_t);
+    if (size < 0 || static_cast<std::size_t>(size) > arr.size())
+        throw std::invalid_argument("Invalid wide string length");
+    SetUtf16(psh::util::WideToUtf16(arr.substr(0, size)));
+}
+
+void SendBufferImpl::SetWstr(const wchar_t* arr, int size)
+{
+    if (arr == nullptr || size < 0)
+        throw std::invalid_argument("Invalid wide string buffer");
+    SetWstr(std::wstring_view(arr, size), size);
+}
+
+void SendBufferImpl::SetUtf16(std::u16string_view value)
+{
+    CanPush(value.size() * 2);
+    psh::util::WriteUtf16LE(_rear, value);
+    _rear += value.size() * 2;
 }
 
 void SendBufferImpl::SetCstr(const psh::LPCSTR arr, const int size)

@@ -33,6 +33,8 @@ public:
 	}
 
 	void SetWstr(psh::LPCWSTR arr, int size);
+	void SetWstr(const wchar_t* arr, int size);
+	void SetUtf16(std::u16string_view value);
 
 	void SetCstr(psh::LPCSTR arr, int size);
 

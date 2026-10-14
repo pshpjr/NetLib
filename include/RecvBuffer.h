@@ -23,7 +23,9 @@ public:
     RecvBuffer& operator >>(T& value);
 
     RecvBuffer& operator >>(String& value);
+    RecvBuffer& operator >>(wchar_t& value);
 
+    // size는 UTF-16 코드 단위 수이며, buffer는 최소 size개의 wchar_t를 담아야 한다.
     void GetWstr(wchar_t *buffer, int size);
     void GetCstr(char *buffer, int size);
 
@@ -83,6 +85,7 @@ private:
 #endif
 
     void Clear();
+    std::wstring ReadWstr(int codeUnits);
     RingBuffer* _buffer = nullptr;
     psh::int32 _size = 0;
     long _refCount = 0;
