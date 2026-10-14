@@ -35,7 +35,7 @@ public:
     //	static RecvBuffer* Alloc(RingBuffer* buffer, psh::int32 size)
     //	{
     //		const auto ret = _pool.Alloc();
-    //		ret->Clear();
+    //		ret->Without();
     //		ret->IncreaseRef(L"AllocInc");
     //		ret->_buffer = buffer;
     //		ret->_size = size;

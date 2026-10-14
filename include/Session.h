@@ -53,7 +53,7 @@ public:
 	Port GetPort() const;
 	SockAddr GetAddress() const;
 	void SetSocket(Socket&& socket);
-	void SetConnect();
+    void SetConnect();
 	void Close();
 	void SetErr(const int errCode);
 	void SetErr(NetError error);
@@ -68,7 +68,7 @@ public:
     psh::RecvState LoadState() const;
 
 
-	// Send
+    // Send
 	bool EnqueueSendData(SendBufferImpl* buffer);
 	void TrySend();
 	bool TryAcquireSendFlag();

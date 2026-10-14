@@ -254,7 +254,7 @@ bool IOCP::SendPacket(const SessionID sessionId, const SendBuffer& sendBuffer, i
     // if (session.TryAcquireSendFlag())
     // {
 
-    //     session._sendExecute.Clear();
+    //     session._sendExecute.Without();
     //     //InterlockedIncrement(&_iocpCompBufferSize);
     //     PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
     //         , session._sendExecute.GetOverlapped());
@@ -311,7 +311,7 @@ bool IOCP::SendPacketDirect(SessionID sessionId, SendBuffer& sendBuffer, int typ
 //         //session.TrySend();
 //         //if (session.TryAcquireSendFlag())
 //         //{
-//         //	session._sendExecute.Clear();
+//         //	session._sendExecute.Without();
 //         //	PostQueuedCompletionStatus(_iocp, -1, (ULONG_PTR)&session, &session._sendExecute._overlapped);
 //         //}
 //         dataSize = 0;
@@ -319,7 +319,7 @@ bool IOCP::SendPacketDirect(SessionID sessionId, SendBuffer& sendBuffer, int typ
 //     //session.TrySend();
 //     if (session.TryAcquireSendFlag())
 //     {
-//         session._sendExecute.Clear();
+//         session._sendExecute.Without();
 //         PostQueuedCompletionStatus(_iocp, static_cast<DWORD>(-1), (ULONG_PTR)&session
 //                                    , session._sendExecute.GetOverlapped());
 //     }

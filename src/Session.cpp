@@ -71,177 +71,177 @@ void Session::SetSocket(Socket&& socket)
 {
 	_socket = std::move(socket);
 
-		_socket.SetCallbacks(
-        [this](NetError error, std::size_t transferred)
+	_socket.SetCallbacks(
+    [this](NetError error, std::size_t transferred)
+    {
+        if (error == NetErrc::None && transferred == 0)
         {
-            if (error == NetErrc::None && transferred == 0)
+            Release(L"ConnectEndRel", 0);
+            return;
+        }
+
+        if (error != NetErrc::None)
+        {
+            using namespace std::chrono;
+
+            const int errNo = error.NativeCode;
+            const auto* type = L"Recv";
+            SetErr(error);
+
+            switch (error)
             {
-                Release(L"ConnectEndRel", 0);
-                return;
+            case NetErrc::ConnectionReset:
+                break;
+
+            case NetErrc::ConnectionAborted:
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                               L"Connection Aborted sessionID : %d, executableType : %s, errNo : %d",
+                               GetSessionId(), type, errNo);
+                break;
+
+            case NetErrc::TimedOut:
+            {
+                const auto now = steady_clock::now();
+                const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
+                const auto sendWait = _needCheckSendTimeout ? duration_cast<milliseconds>(now - _lastSend) : 0ms;
+
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                               L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
+                               L"sendWait : %d recvWait : %d, errNo : %d",
+                               GetSessionId(), type, sendWait, recvWait, errNo);
+                ++_owner->_tcpSemaphoreTimeout;
+                break;
             }
 
-            if (error != NetErrc::None)
-            {
-                using namespace std::chrono;
+            case NetErrc::OperationCanceled:
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Debug,
+                               L"Operation Aborted sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
+                               type, errNo);
+                break;
 
-                const int errNo = error.NativeCode;
-                const auto* type = L"Recv";
-                SetErr(error);
+            case NetErrc::NotFound:
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                               L"Error Not Found sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
+                               type, errNo);
+                break;
 
-                switch (error)
-                {
-                case NetErrc::ConnectionReset:
-                    break;
-
-                case NetErrc::ConnectionAborted:
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
-                                   L"Connection Aborted sessionID : %d, executableType : %s, errNo : %d",
-                                   GetSessionId(), type, errNo);
-                    break;
-
-                case NetErrc::TimedOut:
-                {
-                    const auto now = steady_clock::now();
-                    const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
-                    const auto sendWait = _needCheckSendTimeout ? duration_cast<milliseconds>(now - _lastSend) : 0ms;
-
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
-                                   L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
-                                   L"sendWait : %d recvWait : %d, errNo : %d",
-                                   GetSessionId(), type, sendWait, recvWait, errNo);
-                    ++_owner->_tcpSemaphoreTimeout;
-                    break;
-                }
-
-                case NetErrc::OperationCanceled:
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Debug,
-                                   L"Operation Aborted sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
-                                   type, errNo);
-                    break;
-
-                case NetErrc::NotFound:
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
-                                   L"Error Not Found sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
-                                   type, errNo);
-                    break;
-
-                default:
-                    psh::util::DebugBreak();
-                    break;
-                }
-
-                Release(L"GQCSErrorRelease", errNo);
-                return;
+            default:
+                psh::util::DebugBreak();
+                break;
             }
-            _recvQ.MoveRear(transferred);
+
+            Release(L"GQCSErrorRelease", errNo);
+            return;
+        }
+        _recvQ.MoveRear(transferred);
 
 		
 
 		if (auto handoffGroupId = psh::RecvState::MarkRecvDirty(_state); 
 		    !handoffGroupId)
-            {
+		{
             //  없으면 버퍼 소비 권한이 없다. 
-            }
-            else
-            {
-            HandOffRecvTo(*handoffGroupId);
-            }
-
-
-            RecvNotIncrease();
-        }
-		,
-        [this](NetError error, std::size_t transferred)
+		}
+        else
         {
-            if (error == NetErrc::None && transferred == 0)
+            HandOffRecvTo(*handoffGroupId);
+        }
+
+
+        RecvNotIncrease();
+    }
+	,
+    [this](NetError error, std::size_t transferred)
+    {
+        if (error == NetErrc::None && transferred == 0)
+        {
+            Release(L"ConnectEndRel", 0);
+            return;
+        }
+
+        if (error != NetErrc::None)
+        {
+            using namespace std::chrono;
+
+            const int errNo = error.NativeCode;
+            const auto* type = L"Send";
+            SetErr(error);
+
+            switch (error)
             {
-                Release(L"ConnectEndRel", 0);
-                return;
+            case NetErrc::PartialSend:
+            {
+                std::size_t requestedBytes = 0;
+                const auto packetCount = _dataNotSend.load();
+                for (int i = 0; i < packetCount; ++i)
+                    requestedBytes += _sendingQ[i]->SendDataSize();
+
+                const bool closeRequested = !_connect.load();
+                Close();
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                               L"Partial send sessionID : %llu, requestedBytes : %zu, "
+                               L"transferredBytes : %zu, closeRequested : %d, "
+                               L"cause : unavailable, action : close",
+                               static_cast<unsigned long long>(GetSessionId().id),
+                               requestedBytes, transferred, static_cast<int>(closeRequested));
+                break;
             }
 
-            if (error != NetErrc::None)
+            case NetErrc::ConnectionReset:
+                break;
+
+            case NetErrc::ConnectionAborted:
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                               L"Connection Aborted sessionID : %d, executableType : %s, errNo : %d",
+                               GetSessionId(), type, errNo);
+                break;
+
+            case NetErrc::TimedOut:
             {
-                using namespace std::chrono;
+                const auto now = steady_clock::now();
+                const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
+                const auto sendWait = _needCheckSendTimeout ? duration_cast<milliseconds>(now - _lastSend) : 0ms;
 
-                const int errNo = error.NativeCode;
-                const auto* type = L"Send";
-                SetErr(error);
-
-                switch (error)
-                {
-                case NetErrc::PartialSend:
-                {
-                    std::size_t requestedBytes = 0;
-                    const auto packetCount = _dataNotSend.load();
-                    for (int i = 0; i < packetCount; ++i)
-                        requestedBytes += _sendingQ[i]->SendDataSize();
-
-                    const bool closeRequested = !_connect.load();
-                    Close();
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
-                                   L"Partial send sessionID : %llu, requestedBytes : %zu, "
-                                   L"transferredBytes : %zu, closeRequested : %d, "
-                                   L"cause : unavailable, action : close",
-                                   static_cast<unsigned long long>(GetSessionId().id),
-                                   requestedBytes, transferred, static_cast<int>(closeRequested));
-                    break;
-                }
-
-                case NetErrc::ConnectionReset:
-                    break;
-
-                case NetErrc::ConnectionAborted:
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
-                                   L"Connection Aborted sessionID : %d, executableType : %s, errNo : %d",
-                                   GetSessionId(), type, errNo);
-                    break;
-
-                case NetErrc::TimedOut:
-                {
-                    const auto now = steady_clock::now();
-                    const auto recvWait = duration_cast<milliseconds>(now - lastRecv);
-                    const auto sendWait = _needCheckSendTimeout ? duration_cast<milliseconds>(now - _lastSend) : 0ms;
-
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
-                                   L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
-                                   L"sendWait : %d recvWait : %d, errNo : %d",
-                                   GetSessionId(), type, sendWait, recvWait, errNo);
-                    ++_owner->_tcpSemaphoreTimeout;
-                    break;
-                }
-
-                case NetErrc::OperationCanceled:
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Debug,
-                                   L"Operation Aborted sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
-                                   type, errNo);
-                    break;
-
-                case NetErrc::NotFound:
-                    gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
-                                   L"Error Not Found sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
-                                   type, errNo);
-                    break;
-
-                default:
-                    psh::util::DebugBreak();
-                    break;
-                }
-
-                Release(L"GQCSErrorRelease", errNo);
-                return;
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                               L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
+                               L"sendWait : %d recvWait : %d, errNo : %d",
+                               GetSessionId(), type, sendWait, recvWait, errNo);
+                ++_owner->_tcpSemaphoreTimeout;
+                break;
             }
-            auto& server = *_owner;
-            const auto sentCount = _dataNotSend.exchange(0);
-            server.increaseSendCount(sentCount);
-            for (int i = 0; i < sentCount; i++)
-            {
-                _sendingQ[i]->Release(L"PostSendRelease");
+
+            case NetErrc::OperationCanceled:
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Debug,
+                               L"Operation Aborted sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
+                               type, errNo);
+                break;
+
+            case NetErrc::NotFound:
+                gLogger->Write(L"ConnectionError", Logger::LogLevel::Error,
+                               L"Error Not Found sessionID : %d, executableType : %s, errNo : %d", GetSessionId(),
+                               type, errNo);
+                break;
+
+            default:
+                psh::util::DebugBreak();
+                break;
             }
-            _needCheckSendTimeout = false;
-            _isSending = false;
-            TrySend();
-            Release(L"PostSendRelease");
-        });
+
+            Release(L"GQCSErrorRelease", errNo);
+            return;
+        }
+        auto& server = *_owner;
+        const auto sentCount = _dataNotSend.exchange(0);
+        server.increaseSendCount(sentCount);
+        for (int i = 0; i < sentCount; i++)
+        {
+            _sendingQ[i]->Release(L"PostSendRelease");
+        }
+        _needCheckSendTimeout = false;
+        _isSending = false;
+        TrySend();
+        Release(L"PostSendRelease");
+    });
 }
 
 void Session::ProcessRecv(Group* group)
@@ -744,7 +744,7 @@ void Session::RecvHandler(Group* group)
 	{
         const auto state = LoadState();
         if (state.Has(Moving) || state.GetGroupID() != executingGroup)
-			break;
+            break;
 
 		if (_recvQ.Size() < sizeof(Header))
 		{
