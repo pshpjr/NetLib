@@ -22,6 +22,7 @@ set(CMAKE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/")
 
 # 소스 파일 추가
 add_library(NetLib STATIC
+        src/Console.cpp
         src/CpuUsage.cpp
         src/Logger.cpp
         src/CoreGlobal.cpp

@@ -11,6 +11,7 @@
 #include <memory>
 #include <system_error>
 #include <cstring>
+#include <bit>
 
 #if defined(__linux__) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE 1
@@ -74,6 +75,26 @@ std::wstring psh::util::SToW(std::string_view str)
 
     std::wstring result(bytes.size() / sizeof(wchar_t), L'\0');
     std::memcpy(result.data(), bytes.data(), bytes.size());
+    return result;
+}
+
+std::string psh::util::Utf16ToUtf8(std::u16string_view text)
+{
+    static_assert(sizeof(char16_t) == 2);
+    static_assert(std::endian::native == std::endian::little ||
+                  std::endian::native == std::endian::big);
+    const char* encoding = std::endian::native == std::endian::little ? "UTF-16LE" : "UTF-16BE";
+    return ConvertEncoding({reinterpret_cast<const char*>(text.data()), text.size() * 2},
+                           "UTF-8", encoding);
+}
+
+std::u16string psh::util::Utf8ToUtf16(std::string_view text)
+{
+    const char* encoding = std::endian::native == std::endian::little ? "UTF-16LE" : "UTF-16BE";
+    const auto bytes = ConvertEncoding(text, encoding, "UTF-8");
+    std::u16string result(bytes.size() / 2, u'\0');
+    if (!bytes.empty())
+        std::memcpy(result.data(), bytes.data(), bytes.size());
     return result;
 }
 

@@ -22,6 +22,8 @@ namespace psh::util
 {
     std::string WToS(std::wstring_view wstr);
     std::wstring SToW(std::string_view str);
+    std::string Utf16ToUtf8(std::u16string_view text);
+    std::u16string Utf8ToUtf16(std::string_view text);
 
     void SetThreadName(const char *threadName);
 
