@@ -327,6 +327,12 @@ psh::Result<NetError> Socket::Listen(const int backlog) const
     return true;
 }
 
+void Socket::StopListening()
+{
+    // accept 대기만 취소한다. 소켓과 Executor 등록은 Close()에서 정리한다.
+    CancelIO();
+}
+
 psh::Result<Socket, NetError> Socket::Accept() const
 {
     sockaddr_in clientAddr = {};
