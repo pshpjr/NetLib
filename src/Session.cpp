@@ -134,20 +134,20 @@ void Session::SetSocket(Socket&& socket)
                 return;
             }
             _recvQ.MoveRear(transferred);
-            auto& server = *_owner;
-            if (GetGroupID() != GroupManager::BaseGroupID() && !recvHandleWaitInGroup())
+
+		
+
+		if (auto handoffGroupId = psh::RecvState::MarkRecvDirty(_state); 
+		    !handoffGroupId)
             {
-                setRecvHandled(true);
-                server._groupManager->OnRecv(GetSessionId(), GetGroupID(), transferred);
-            }
-            else if (_staticKey)
-            {
-                RecvHandler<NetHeader>(nullptr);
+            //  없으면 버퍼 소비 권한이 없다. 
             }
             else
             {
-                RecvHandler<LANHeader>(nullptr);
+            HandOffRecvTo(*handoffGroupId);
             }
+
+
             RecvNotIncrease();
         }
 		,
@@ -244,6 +244,72 @@ void Session::SetSocket(Socket&& socket)
         });
 }
 
+void Session::ProcessRecv(Group* group)
+{
+	using enum psh::RecvState::Flag;
+
+    const auto executingGroup = group ? group->GetGroupID() : GroupManager::BaseGroupID();
+    // recv를 다시 거는 시점부터 session이 정리될 수 있으므로, 세션을 더 건드리지 않는 맨 마지막에 건다.
+    bool resumeRecv = false;
+
+    for (;;)
+    {
+        auto state = LoadState();
+        ASSERT_CRASH(state.Has(RecvScheduled), L"소비 권한은 scheduled된 상태여야 함");
+
+        //  이동중인경우 이동 완료된 그룹에서 처리하므로 Dirty만 남긴다.
+        if (state.Has(Moving))
+        {
+            const auto next = state.With(RecvDirty).Without(RecvScheduled);
+            if (!_state.compare_exchange_weak(state.data, next))
+                continue;
+            break;
+        }
+        // 다른 그룹에 recv 처리를 요청해야 한다. 내가 가진 실행 권한을 전달한다.
+        if (state.GetGroupID() != executingGroup)
+        {
+            _state.fetch_or(RecvDirty);
+            HandOffRecvTo(state.GetGroupID());
+            break;
+        }
+        //  처리할 패킷이 추가로 있다.
+        if (state.Has(RecvDirty))
+        {
+            if (!_state.compare_exchange_weak(state.data, state.Without(RecvDirty)))
+                continue;
+            if (_staticKey)
+                RecvHandler<NetHeader>(group);
+            else
+                RecvHandler<LANHeader>(group);
+            continue;
+        }
+        //  버퍼가 가득 차서 recv가 멈춰있었다. 버퍼를 비웠으니 끝나고 recv를 다시 건다.
+        if (state.Has(RecvPaused))
+        {
+            if (!_state.compare_exchange_weak(state.data, state.Without(RecvPaused)))
+                continue;
+            resumeRecv = true;
+            continue;
+        }
+        //  더이상 할 작업 없으면 권한를 반납한다.
+        if (_state.compare_exchange_weak(state.data, state.Without(RecvScheduled)))
+            break;
+    }
+
+    if (resumeRecv)
+        RecvNotIncrease();
+}
+
+//  해당 그룹에게 이 세션의 버퍼 소비 권한을 전달한다. base의 경우 큐가 없으므로 바로 소비한다. 
+void Session::HandOffRecvTo(const GroupID group)
+{
+	//  TODO: 이 때 Post 하는거랑 그냥 실행하는 거랑 차이 확인. 
+    if (group == GroupManager::BaseGroupID())
+        ProcessRecv(nullptr);
+    else
+        _owner->_groupManager->OnRecv(GetSessionId(), group, 0);
+}
+
 void Session::SetConnect()
 {
 	_connect = true;
@@ -293,7 +359,7 @@ void Session::Reset()
 	{
 		sendBuffer->Release(L"ResetSendRelease");
 	}
-	SetGroupID(GroupID(0));
+    _state = psh::RecvState{};
 	_recvQ.Clear();
 
 	const int notSend = _dataNotSend.exchange(0);
@@ -358,6 +424,11 @@ void Session::OffReleaseFlag()
 	_refCount.fetch_and(~RELEASE_FLAG);
 }
 
+psh::RecvState Session::LoadState() const
+{
+    return _state.load();
+}
+
 // Send
 bool Session::EnqueueSendData(SendBufferImpl* buffer)
 {
@@ -409,7 +480,6 @@ bool Session::TryAcquireSendFlag()
 	return true;
 }
 
-// Receive
 void Session::RegisterRecv()
 {
 	++_refCount;
@@ -417,6 +487,7 @@ void Session::RegisterRecv()
 	RecvNotIncrease();
 }
 
+//  이 함수 호출 이후론 세션이 정리될 수 있다. 함수 마지막에 호출해야 한다. 
 void Session::RecvNotIncrease()
 {
 	if (_refCount >= RELEASE_FLAG)
@@ -432,10 +503,22 @@ void Session::RecvNotIncrease()
     size_t bufferCount = 1;
 	SocketRecvBuffer recvBuffers[2] = {};
 
-	const auto recvSize = _recvQ.DirectEnqueueSize();
+
 	const auto freeSize = _recvQ.FreeSize();
+	if (freeSize == 0)
+    {
+        if (auto handoffGroupId = psh::RecvState::MarkPauseRecv(_state))
+        {
+            //  handOff
+            HandOffRecvTo(*handoffGroupId);
+        }
+        return;
+    }
+
+	const auto recvSize = std::min<unsigned>(_recvQ.DirectEnqueueSize(), freeSize);
 	SetSocketBuffer(recvBuffers[0], _recvQ.GetRear(), recvSize);
 
+	//  [□□□■■■■□□] 형태로 데이터 있는 경우
 	if (freeSize > recvSize)
 	{
 		SetSocketBuffer(recvBuffers[1], _recvQ.GetBuffer(), freeSize - recvSize);
@@ -443,7 +526,6 @@ void Session::RecvNotIncrease()
 		bufferCount = 2;
 	}
 
-	ASSERT_CRASH(freeSize != 0, "RecvBuffer is 0");
 
 	lastRecv = std::chrono::steady_clock::now();
 
@@ -515,22 +597,14 @@ void Session::SetMaxPacketLen(const int size)
 // Group
 GroupID Session::GetGroupID() const
 {
-	return _groupId.load();
+    return LoadState().GetGroupID();
 }
 
-void Session::SetGroupID(const GroupID id)
+void Session::CompleteMove()
 {
-	_groupId.store(id);
-}
-
-bool Session::recvHandleWaitInGroup()
-{
-	return _isHandled.load(std::memory_order::acquire);
-}
-
-void Session::setRecvHandled(bool value)
-{
-	_isHandled.store(value, std::memory_order::release);
+    // 이동 중에 쌓인 데이터를 새 그룹에서 처리한다.
+    if (const auto group = psh::RecvState::CompleteMove(_state))
+        HandOffRecvTo(*group);
 }
 
 // Lifetime
@@ -660,16 +734,17 @@ void Session::WriteContentLog(unsigned int type)
 template <typename Header>
 void Session::RecvHandler(Group* group)
 {
-	const auto expectedGroup = group ? group->GetGroupID() : GroupManager::BaseGroupID();
+	using enum psh::RecvState::Flag;
+
+	const auto executingGroup = group ? group->GetGroupID() : GroupManager::BaseGroupID();
 	Logger& logger = group ? *group->_groupLogger : *gLogger;
 	int loopCount = 0;
 
 	while (true)
 	{
-		if (GetGroupID() != expectedGroup)
-		{
+        const auto state = LoadState();
+        if (state.Has(Moving) || state.GetGroupID() != executingGroup)
 			break;
-		}
 
 		if (_recvQ.Size() < sizeof(Header))
 		{

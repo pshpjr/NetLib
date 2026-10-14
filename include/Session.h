@@ -5,18 +5,18 @@
 #include <chrono>
 #include "GroupTypes.h"
 #include "Executable.h"
-#include "LockQueue.h"
-#include "Macro.h"
 #include "RingBuffer.h"
 #include "SessionTypes.h"
 #include "Socket.h"
 #include "Types.h"
+#include "Network/RecvState.h"
 
 #include <optional>
 
 class SendBufferImpl;
 class RecvBuffer;
 class IOCP;
+class Group;
 
 
 //#define SESSION_DEBUG
@@ -33,6 +33,7 @@ class Session
 
 	friend class IOCP;
 	friend class Group;
+	friend class GroupManager;
 
 public:
 	// Construction
@@ -64,6 +65,8 @@ public:
 	inline long IncreaseRef(psh::LPCWSTR content);
 	bool Release(psh::LPCWSTR content = L"", int type = 0);
 	void OffReleaseFlag();
+    psh::RecvState LoadState() const;
+
 
 	// Send
 	bool EnqueueSendData(SendBufferImpl* buffer);
@@ -88,11 +91,9 @@ public:
 	void SetMaxPacketLen(const int size);
 
 	// Group
-	//0이면 아무 그룹 아님.
+	//0이면 base
 	GroupID GetGroupID() const;
-	void SetGroupID(const GroupID id);
-	bool recvHandleWaitInGroup();
-	void setRecvHandled(bool value);
+    void CompleteMove();
 
 #ifdef SESSION_DEBUG
 	void Write(long refCount, GroupID dst, psh::LPCWSTR cause)
@@ -125,6 +126,8 @@ private:
 	// Receive
 	template <typename Header>
 	void RecvHandler(Group* group);
+    void ProcessRecv(Group* group);
+    void HandOffRecvTo(GroupID group);
 
 	// Timeout
 	std::optional<timeoutInfo> CheckTimeout(std::chrono::steady_clock::time_point now);
@@ -136,10 +139,13 @@ private:
 	// Identity
 	alignas(64) SessionID _sessionId = {{0}};
 
-	// Connection
+	// State
 	Socket _socket;
 	std::atomic_bool _connect = false;
 	NetError _errCode{};
+
+    // Group
+    psh::AtomicRecvState _state{};
 
 	// Lifetime
 	std::atomic<long> _refCount = RELEASE_FLAG;
@@ -172,9 +178,7 @@ private:
 	char _staticKey = false;
 	unsigned int _maxPacketLen = 5000;
 
-	// Group
-	std::atomic<GroupID> _groupId = GroupID(0);
-	std::atomic_bool _isHandled = false;
+
 
 	// Debug
 	volatile std::atomic<int> _uniqueAccess;

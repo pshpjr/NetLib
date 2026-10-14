@@ -8,33 +8,48 @@ void GroupManager::MoveSession(const SessionID target, const GroupID dst)
     const auto session = _owner->FindSession(target, L"MoveSession");
 
     if (session == nullptr)
+        return;
+
     {
+        std::shared_lock groupLock(_groupLock);
+        if (auto it = _groups.find(dst); it == _groups.end())
+            return;
+    }
+
+
+    const auto prevGroup = psh::RecvState::TryBeginMove(session->_state, dst);
+    if (!prevGroup)
+    {
+        // 이전 이동의 OnEnter가 아직 안 끝났다. 이동이 중첩될 경우 처리가 안 되므로, 나중에 다시 시도한다.
+        if (!_owner->_executor.Post(
+                [this, target, dst, session]
+                {
+                    MoveSession(target, dst);
+                    session->Release(L"DeferredMove");
+                }))
+        {
+            session->Release(L"DeferredMoveRejected");
+        }
         return;
     }
-    GroupID src = session->GetGroupID();
-
 
     std::shared_lock groupLock(_groupLock);
 
-    if (src != BaseGroupID())
+    if (*prevGroup != BaseGroupID())
     {
-        const auto& srcGroup = _groups.find(src)->second;
-#ifdef SESSION_DEBUG
-		session->Write(-1, src, L"MoveLeave");
-#endif
-        srcGroup->LeaveSession(session->GetSessionId(), session->GetErr());
+        _groups.find(*prevGroup)->second->LeaveSession(target, session->GetErr());
     }
-    session->SetGroupID(dst);
+
     if (dst != BaseGroupID())
     {
-        const auto& dstGroup = _groups.find(dst)->second;
-#ifdef SESSION_DEBUG
-		session->Write(-1, dst, L"MoveEnter");
-#endif
-        dstGroup->EnterSession(session->GetSessionId());
+        _groups.find(dst)->second->EnterSession(target);
     }
+
     groupLock.unlock();
 
+    // Base는 Enter job이 없으므로 여기서 바로 이동을 끝낸다.
+    if (dst == BaseGroupID())
+        session->CompleteMove();
 
     session->Release(L"MoveSessionRel");
 }

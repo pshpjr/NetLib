@@ -177,6 +177,13 @@ bool Group::HandleJob()
 				_sessions.insert(job.sessionId);
 
 				OnEnter(job.sessionId);
+
+                //  세션 정리 중일 경우 x
+			    if (auto session = _iocp->FindSession(job.sessionId, L"EnterComplete"))
+                {
+                    session->CompleteMove();
+                    session->Release(L"EnterComplete");
+                }
 			}
 			break;
 		case GroupJob::type::Leave:
@@ -222,21 +229,7 @@ bool Group::HandleJob()
 					continue;
 				}
 
-				/*
-				 * 지금 받은 패킷만 처리하고 있음. 처음에는 해당 세션이 받은 모든 패킷 다 처리하게 만들었는데
-				 * 이 경우 패킷이 계속 들어오면 뒤애 애들 처리가 너무 느려지는 문제 발생
-				 * 전체 처리량이 줄어들더라도 반응성을 위해 수정함.
-				 */
-				session->setRecvHandled(false);
-				if (session->_staticKey)
-				{
-					session->RecvHandler<NetHeader>(this);
-				}
-				else
-				{
-					session->RecvHandler<LANHeader>(this);
-				}
-
+				session->ProcessRecv(this);
 				session->Release(L"HandlePacketRelease");
 			}
 			break;
