@@ -15,8 +15,8 @@ DBConnection::DBConnection(const psh::LPCSTR ip, const psh::uint32 port, const p
                            , const psh::LPCSTR db)
     : pImple(std::make_unique<Imple>())
 {
-    /*
-    mysql_init(&pImple->conn);
+    if (!mysql_init(&pImple->conn))
+        throw std::runtime_error("MySQL initialization failed");
 
     const std::string host(ip), user(id), password(pass), database(db);
     pImple->connection = mysql_real_connect(&pImple->conn, host.c_str(), user.c_str(), password.c_str(), database.c_str(), port, nullptr, 0);
@@ -25,18 +25,24 @@ DBConnection::DBConnection(const psh::LPCSTR ip, const psh::uint32 port, const p
         const char* err = nullptr;
         err = mysql_error(&pImple->conn);
         const auto num = mysql_errno(&pImple->conn);
-        throw DBErr(err, num, std::chrono::milliseconds::zero(), "Error connecting to database");
-
-        printf("%d \n", num);
+        const std::string message(err);
+        mysql_close(&pImple->conn);
+        throw DBErr(message, num, std::chrono::milliseconds::zero(), "Error connecting to database");
     }
 
-    SetReconnect(true);
-    */
+    if (mysql_set_character_set(pImple->connection, "utf8mb4") != 0)
+    {
+        const std::string message(mysql_error(pImple->connection));
+        const auto number = mysql_errno(pImple->connection);
+        Close();
+        throw DBErr(message, number, {}, "Set character set");
+    }
 }
 
 void DBConnection::LibInit()
 {
-    //mysql_library_init(0, nullptr, nullptr);
+    if (mysql_library_init(0, nullptr, nullptr) != 0)
+        throw std::runtime_error("MySQL library initialization failed");
 }
 
 DBConnection::~DBConnection()
@@ -52,7 +58,7 @@ DBConnection::~DBConnection()
 
 std::chrono::microseconds DBConnection::ExecuteQuery(const std::string& queryString)
 {
-    /*
+    reset();
     const auto start = std::chrono::steady_clock::now();
 
     if (const int query_stat = mysql_real_query(pImple->connection, queryString.c_str()
@@ -74,21 +80,23 @@ std::chrono::microseconds DBConnection::ExecuteQuery(const std::string& queryStr
     }
 
     pImple->sql_result = mysql_store_result(pImple->connection);
+    if (!pImple->sql_result && mysql_field_count(pImple->connection) != 0)
+    {
+        const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
+        throw DBErr(mysql_error(pImple->connection), mysql_errno(pImple->connection), duration, queryString);
+    }
 
 
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start);
-    */
-    return std::chrono::microseconds::zero();
 }
 
 
 bool DBConnection::next()
 {
-    /*
+    if (!pImple->sql_result) return false;
     pImple->sql_row = mysql_fetch_row(pImple->sql_result);
     return pImple->sql_row != nullptr;
-    */
-    return false;
 }
 
 char* DBConnection::getString(const int index) const
@@ -120,22 +128,20 @@ double DBConnection::getDouble(const int index) const
 
 void DBConnection::reset()
 {
-    /*
-    mysql_free_result(pImple->sql_result);
-    */
+    if (pImple->sql_result) mysql_free_result(pImple->sql_result);
+    pImple->sql_result = nullptr;
+    pImple->sql_row = nullptr;
 }
 
 void DBConnection::Close()
 {
-    /*
-    mysql_close(pImple->connection);
-    */
+    reset();
+    if (pImple->connection) mysql_close(pImple->connection);
+    pImple->connection = nullptr;
 }
 
 void DBConnection::SetReconnect(const bool useReconnect)
 {
-    /*
     const bool reconnect = useReconnect;
     mysql_options(&pImple->conn, MYSQL_OPT_RECONNECT, &reconnect);
-    */
 }
