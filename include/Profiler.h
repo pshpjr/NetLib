@@ -10,6 +10,7 @@
 #define PRO_FUNCTION() ZoneScoped
 #define PRO_FRAME(name) FrameMarkNamed(name)
 #define PRO_THREAD(name) tracy::SetThreadName(name)
+#define PRO_VALUE(value) ZoneValue(value)
 #define PRO_MESSAGE(message) TracyMessageL(message)
 #define PRO_PLOT(name, value) TracyPlot(name, value)
 #define PRO_LOCK(type, name) TracyLockable(type, name)
@@ -19,6 +20,7 @@
 #define PRO_FUNCTION()
 #define PRO_FRAME(name)
 #define PRO_THREAD(name)
+#define PRO_VALUE(value)
 #define PRO_MESSAGE(message)
 #define PRO_PLOT(name, value)
 #define PRO_LOCK(type, name) type name

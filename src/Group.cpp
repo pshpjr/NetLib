@@ -96,6 +96,8 @@ void Group::RequestUpdate()
 
 void Group::Update()
 {
+    PRO_BEGIN("Group::Update");
+    PRO_VALUE(static_cast<long>(_groupId));
 	auto expected = UpdateState::Scheduled;
 	if (!_updateState.compare_exchange_strong(expected, UpdateState::Running))
 	{
@@ -122,7 +124,9 @@ void Group::Process()
 {
 	using namespace std::chrono;
 	using namespace std::literals::chrono_literals;
-	PRO_FRAME("Group HandleJob");
+	PRO_BEGIN("Group::Process");
+    PRO_VALUE(static_cast<long>(_groupId));
+    PRO_PLOT("Group queued jobs", static_cast<double>(_jobs->Size()));
 
 	auto start = steady_clock::now();
 	while (hasJob() || NeedUpdate())
@@ -131,7 +135,11 @@ void Group::Process()
 
 		if (NeedUpdate())
 		{
-			OnUpdate(_loopMs);
+			{
+                PRO_BEGIN("Group::OnUpdate");
+                PRO_VALUE(static_cast<long>(_groupId));
+                OnUpdate(_loopMs);
+            }
 			_nextUpdate += milliseconds(_loopMs);
 		}
 	}
@@ -165,6 +173,7 @@ bool Group::HandleJob()
 	while (_jobs->Dequeue(job))
 	{
 		PRO_BEGIN("HandleJob");
+        PRO_VALUE((static_cast<unsigned long long>(static_cast<long>(_groupId)) << 32) | static_cast<unsigned>(job.type));
 		++jobs;
 		switch (job.type)
 		{

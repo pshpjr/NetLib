@@ -23,6 +23,10 @@ Session::Session()
 	  , _owner(nullptr)
 	  , _releaseExecutable(*new Executable(Executable::IoType::Release))
 {
+	_sendExecutable.SetCallback([this](NetError, std::size_t)
+	{
+		RealSend();
+	});
 	_releaseExecutable.SetCallback([this](NetError, std::size_t)
 	{
 		_owner->_onDisconnect(GetSessionId(), GetErr());
@@ -348,12 +352,6 @@ void Session::Reset()
 	_timeout = _defaultTimeout;
 	_errCode = {};
 
-	//RecvBuffer* recvBuffer;
-	//while ( _groupRecvQ.Dequeue(recvBuffer) )
-	//{
-	//	recvBuffer->Release(L"ResetRecvRelease");
-	//}
-
 	SendBufferImpl* sendBuffer;
 	while (_sendQ.Dequeue(sendBuffer))
 	{
@@ -361,6 +359,7 @@ void Session::Reset()
 	}
     _state = psh::RecvState{};
 	_recvQ.Clear();
+    _sendQ.Clear();
 
 	const int notSend = _dataNotSend.exchange(0);
 
@@ -442,7 +441,14 @@ void Session::TrySend()
 		return;
 	}
 
-	RealSend();
+	// executor 대기부터 송신 완료까지 세션의 수명을 유지합니다.
+	const auto refIncResult = IncreaseRef(L"postSendInc");
+	if (refIncResult >= RELEASE_FLAG)
+	{
+		Release(L"postSendSessionIsRelease");
+		return;
+	}
+	_owner->PostExecutable(_sendExecutable);
 }
 
 bool Session::TryAcquireSendFlag()
@@ -621,13 +627,6 @@ void Session::RealSend()
 {
 	PRO_FUNCTION();
 
-
-	const auto refIncResult = IncreaseRef(L"realSendInc");
-	if (refIncResult >= RELEASE_FLAG)
-	{
-		Release(L"realSendSessionIsRelease");
-		return;
-	}
 
 	size_t sendPackets = 0;
 	SocketSendBuffer sendBuffers[MAX_SEND_COUNT] = {};

@@ -1,4 +1,4 @@
-﻿#include "WindowsExecutor.h"
+#include "WindowsExecutor.h"
 
 #include "Executable.h"
 #include "ExceptionTrace.h"
@@ -201,6 +201,8 @@ void WindowsExecutor::TryConfirmStop()
 
 void WindowsExecutor::ExecuteNoThrow(Executable& executable)
 {
+    PRO_BEGIN("Executor callback");
+    PRO_VALUE(static_cast<unsigned>(executable.GetIoType()));
     try
     {
         psh::util::RunWithTrace("WindowsExecutor::ExecuteNoThrow", [&]
