@@ -27,30 +27,18 @@ Group::Group()
 
 Group::~Group() = default;
 
-psh::int64 Group::GetWorkTime() const
+void Group::InitMetrics()
 {
-	return oldWorkTime;
-}
+	using psh::metrics::Registry;
+	const psh::metrics::Attributes attributes{{"group", std::to_string(static_cast<long>(_groupId))}};
 
-psh::int64 Group::GetJobTps() const
-{
-	return oldHandledJob;
+	_processMetric = Registry::CreateTimeHistogram("group.process.duration", "time spent in one Process call", attributes);
+	_jobMetric = Registry::CreateCounter("group.jobs", "handled group jobs", attributes);
+	_enterMetric = Registry::CreateCounter("group.enters", "sessions entered the group", attributes);
+	_leaveMetric = Registry::CreateCounter("group.leaves", "sessions left the group", attributes);
+	_sessionMetric = Registry::CreateGauge("group.sessions", "sessions in the group", attributes);
+	_jobQueueMetric = Registry::CreateGauge("group.job.queue.size", "queued group jobs", attributes);
 }
-
-psh::int64 Group::GetMaxWorkTime() const
-{
-	return oldMaxWorkTime;
-}
-
-psh::int32 Group::GetEnterTps() const
-{
-	return _enterTps;
-}
-
-psh::int32 Group::GetLeaveTps() const
-{
-	return _leaveTps;
-};
 
 void Group::Enqueue(GroupJob job)
 {
@@ -128,7 +116,7 @@ void Group::Process()
     PRO_VALUE(static_cast<long>(_groupId));
     PRO_PLOT("Group queued jobs", static_cast<double>(_jobs->Size()));
 
-	auto start = steady_clock::now();
+	const auto metricStart = psh::metrics::Histogram::TimePoint::Now();
 	while (hasJob() || NeedUpdate())
 	{
 		HandleJob();
@@ -144,23 +132,12 @@ void Group::Process()
 		}
 	}
 
-	auto end = steady_clock::now();
-	auto curWorkTime = end - start;
-	maxWorkTime = std::max(maxWorkTime, curWorkTime);
-	workTime += curWorkTime;
+	_processMetric.RecordSince(metricStart);
 
-	if (end > _nextMonitor)
+	if (steady_clock::now() > _nextMonitor)
 	{
-		oldMaxWorkTime =
-			std::chrono::duration_cast<milliseconds>(maxWorkTime).count();
-		maxWorkTime = maxWorkTime.zero();
-		oldWorkTime = std::chrono::duration_cast<milliseconds>(workTime).count();
-		workTime = workTime.zero();
-
-		oldHandledJob = _handledJob.exchange(0);
-		_enterTps = std::exchange(_handledEnter, 0);
-		_leaveTps = std::exchange(_handledLeave, 0);
-		jobQSize = _jobs->Size();
+		_sessionMetric.Set(static_cast<psh::int64>(_sessions.size()));
+		_jobQueueMetric.Set(_jobs->Size());
 
 		_nextMonitor += 1s;
 	}
@@ -179,7 +156,7 @@ bool Group::HandleJob()
 		{
 		case GroupJob::type::Enter:
 			{
-				++_handledEnter;
+				_enterMetric.Add();
 
 				// Write(job.sessionId, Group::jobType::Enter, InvalidGroupID(), L"Enter
 				// Handled");
@@ -197,7 +174,7 @@ bool Group::HandleJob()
 			break;
 		case GroupJob::type::Leave:
 			{
-				++_handledLeave;
+				_leaveMetric.Add();
 				// Write(job.sessionId, Group::jobType::Leave, InvalidGroupID(), L"Leave
 				// Handled");
 				if (_sessions.erase(job.sessionId) == 0)
@@ -251,7 +228,7 @@ bool Group::HandleJob()
 			break;
 		}
 	}
-	_handledJob.fetch_add(jobs);
+	_jobMetric.Add(jobs);
 	return true;
 }
 
@@ -314,11 +291,6 @@ void Group::OnRecv(SessionID id, RecvBuffer& recvBuffer)
 GroupID Group::GetGroupID() const
 {
 	return _groupId;
-}
-
-int Group::GetQueued() const
-{
-	return jobQSize;
 }
 
 void Group::SendPacket(const SessionID id, const SendBuffer& buffer) const

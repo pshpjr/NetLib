@@ -1,5 +1,6 @@
 #pragma once
 #include "LockFreeStack.h"
+#include "Metrics.h"
 #include "Session.h"
 #include "SessionTypes.h"
 #include "ThreadWrapper.h"
@@ -146,27 +147,38 @@ protected:
     *	MONITOR
     *
     */
-    psh::uint64 _acceptCount = 0;
-    psh::uint64 _oldAccepCount = 0;
-    std::atomic<psh::int64> _recvCount = 0;
-    std::atomic<psh::int64> _sendCount = 0;
-    psh::uint64 _oldDisconnect = 0;
-    std::atomic<psh::int64> _disconnectCount = 0;
-    std::atomic<psh::uint32> _tcpSemaphoreTimeout = 0;
-    psh::uint64 _acceptTps = 0;
-    psh::uint64 _recvTps = 0;
-    psh::uint64 _sendTps = 0;
-    psh::uint64 _disconnectps = 0;
     std::atomic<short> _sessionCount = 0;
-    psh::uint64 _packetPoolSize = 0;
-    psh::uint32 _packetPoolEmpty = 0;
-    psh::uint64 _timeoutSessions = 0;
     psh::uint32 _acceptErrorCount = 0;
     long _iocpCompBufferSize = 0;
 
     //vector<threadMonitor> _threadMonitors;
     std::unique_ptr<MemoryUsage> _memMonitor;
     std::unique_ptr<CpuUsage> _cpuMonitor;
+
+    //  _sessionMetric 콜백이 _sessionCount를 읽으므로 그보다 뒤에 선언한다.
+    psh::metrics::Counter _acceptMetric;
+    psh::metrics::Counter _disconnectMetric;
+    psh::metrics::Counter _recvPacketMetric;
+    psh::metrics::Counter _sendPacketMetric;
+    psh::metrics::Counter _timeoutMetric;
+    psh::metrics::Counter _semaphoreTimeoutMetric;
+    psh::metrics::CallbackGauge _sessionMetric;
+
+    //  다른 스레드에서 읽으면 안 되는 값이라 MonitorThread가 1초마다 Set한다.
+    psh::metrics::Gauge _virtualMemMetric;
+    psh::metrics::Gauge _peakVirtualMemMetric;
+    psh::metrics::Gauge _physicalMemMetric;
+    psh::metrics::Gauge _peakPhysicalMemMetric;
+    psh::metrics::DoubleGauge _processCpuMetric;
+    psh::metrics::DoubleGauge _processKernelCpuMetric;
+    psh::metrics::DoubleGauge _processUserCpuMetric;
+    psh::metrics::DoubleGauge _systemCpuMetric;
+    psh::metrics::DoubleGauge _systemKernelCpuMetric;
+    psh::metrics::DoubleGauge _systemUserCpuMetric;
+    psh::metrics::Gauge _sendPoolMetric;
+    psh::metrics::Gauge _sendPoolEmptyMetric;
+    psh::metrics::Gauge _sendPoolAcquireMetric;
+    psh::metrics::Gauge _sendPoolReleaseMetric;
 
     /*
     *

@@ -113,38 +113,6 @@ public:
     {
     }
 
-    virtual void OnMonitorRun()
-    {
-    }
-
-    //MONITOR
-    psh::uint64 GetAcceptCount() const;
-    psh::uint64 GetAcceptTps() const;
-    psh::uint64 GetRecvTps() const;
-    psh::uint64 GetSendTps() const;
-    psh::int16 GetSessionCount() const;
-    psh::uint64 GetPacketPoolSize() const;
-    psh::uint32 GetPacketPoolEmptyCount() const;
-    psh::uint64 GetTimeoutCount() const;
-    static psh::uint32 GetPacketPoolAcquireCount();
-    static psh::uint32 GetPacketPoolReleaseCount();
-    psh::uint64 GetDisconnectCount() const;
-    psh::uint64 GetDisconnectPerSec() const;
-    psh::uint32 GetSemaphoreTimeoutCount() const;
-
-    size_t GetPageFaultCount() const;
-    size_t GetPeakPMemSize() const;
-    size_t GetPMemSize() const;
-    size_t GetPeakVirtualMemSize() const;
-    size_t GetVirtualMemSize() const;
-    size_t GetPeakPagedPoolUsage() const;
-    size_t GetPeakNonPagedPoolUsage() const;
-    size_t GetPagedPoolUsage() const;
-    size_t GetNonPagedPoolUsage() const;
-
-    String GetLibMonitorString() const;
-    void PrintMonitorString() const;
-
 
     template <typename GroupType, typename... Args>
     GroupID CreateGroup(Args&&... args) const;

@@ -3,6 +3,7 @@
 #include "Executable.h"
 #include "LockFreeFixedQueue.h"
 #include "Logger.h"
+#include "Metrics.h"
 #include "SessionTypes.h"
 
 #include <atomic>
@@ -43,7 +44,6 @@ public:
     virtual void OnRecv(SessionID id, RecvBuffer& recvBuffer);
 
     [[nodiscard]] GroupID GetGroupID() const;
-    [[nodiscard]] int GetQueued() const;
     void SendPacket(SessionID id, const SendBuffer& buffer) const;
     // void SendPackets(SessionID id, Vector<SendBuffer>& buffer);
 
@@ -94,16 +94,6 @@ protected:
 
     [[nodiscard]] size_t Sessions() const;
 
-    [[nodiscard]] psh::int64 GetWorkTime() const;
-
-    [[nodiscard]] psh::int64 GetJobTps() const;
-
-    [[nodiscard]] psh::int64 GetMaxWorkTime() const;
-
-    [[nodiscard]] psh::int32 GetEnterTps() const;
-
-    [[nodiscard]] psh::int32 GetLeaveTps() const;
-
     IOCP* _iocp;
     int _loopMs = 10;
 private:
@@ -127,6 +117,9 @@ private:
     };
 
     void Enqueue(GroupJob job);
+
+    //  그룹 ID를 속성으로 쓰므로 ID가 정해진 뒤 GroupManager가 호출한다.
+    void InitMetrics();
 
     bool NeedUpdate();
     //  Idle이면 업데이트를 post하고, 실행 중이면 한 번 더 돌도록 표시한다.
@@ -157,16 +150,11 @@ private:
 
     // MONITOR
     std::chrono::steady_clock::time_point _nextMonitor;
-    std::chrono::steady_clock::duration workTime{};
-    std::chrono::steady_clock::duration maxWorkTime{};
-    std::atomic<psh::int64> _handledJob = 0;
-    long jobQSize = 0;
-
-    psh::int64 oldWorkTime = 0;
-    psh::int64 oldHandledJob = 0;
-    psh::int64 oldMaxWorkTime = 0;
-    long _leaveTps = 0;
-    long _handledLeave = 0;
-    long _enterTps = 0;
-    long _handledEnter = 0;
+    psh::metrics::Histogram _processMetric;
+    psh::metrics::Counter _jobMetric;
+    psh::metrics::Counter _enterMetric;
+    psh::metrics::Counter _leaveMetric;
+    //  다른 스레드에서 읽으면 안 되는 값이라 콜백 대신 모니터 주기마다 Set한다.
+    psh::metrics::Gauge _sessionMetric;
+    psh::metrics::Gauge _jobQueueMetric;
 };

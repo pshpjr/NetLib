@@ -44,6 +44,34 @@ IOCP::IOCP()
 	{
 		session.SetOwner(*this);
 	}
+
+	using psh::metrics::Registry;
+	using psh::metrics::Unit;
+	_acceptMetric = Registry::CreateCounter("net.accepts", "accepted connections");
+	_disconnectMetric = Registry::CreateCounter("net.disconnects", "disconnected sessions");
+	_recvPacketMetric = Registry::CreateCounter("net.packets.recv", "received packets");
+	_sendPacketMetric = Registry::CreateCounter("net.packets.sent", "sent packets");
+	_timeoutMetric = Registry::CreateCounter("net.timeouts", "session timeouts");
+	_semaphoreTimeoutMetric = Registry::CreateCounter("net.semaphore.timeouts", "socket operations failed with semaphore timeout");
+	_sessionMetric = Registry::CreateCallbackGauge("net.sessions", "connected sessions", {},
+	                                               [this] { return static_cast<psh::int64>(_sessionCount.load()); });
+
+	_virtualMemMetric = Registry::CreateGauge("process.memory.virtual", "virtual memory", {}, Unit::Bytes);
+	_peakVirtualMemMetric = Registry::CreateGauge("process.memory.virtual.peak", "peak virtual memory", {}, Unit::Bytes);
+	_physicalMemMetric = Registry::CreateGauge("process.memory.physical", "physical memory", {}, Unit::Bytes);
+	_peakPhysicalMemMetric = Registry::CreateGauge("process.memory.physical.peak", "peak physical memory", {}, Unit::Bytes);
+
+	_processCpuMetric = Registry::CreateDoubleGauge("process.cpu.usage", "process CPU usage", {{"mode", "total"}}, Unit::Percent);
+	_processKernelCpuMetric = Registry::CreateDoubleGauge("process.cpu.usage", "process CPU usage", {{"mode", "kernel"}}, Unit::Percent);
+	_processUserCpuMetric = Registry::CreateDoubleGauge("process.cpu.usage", "process CPU usage", {{"mode", "user"}}, Unit::Percent);
+	_systemCpuMetric = Registry::CreateDoubleGauge("system.cpu.usage", "system CPU usage", {{"mode", "total"}}, Unit::Percent);
+	_systemKernelCpuMetric = Registry::CreateDoubleGauge("system.cpu.usage", "system CPU usage", {{"mode", "kernel"}}, Unit::Percent);
+	_systemUserCpuMetric = Registry::CreateDoubleGauge("system.cpu.usage", "system CPU usage", {{"mode", "user"}}, Unit::Percent);
+
+	_sendPoolMetric = Registry::CreateGauge("net.sendbuffer.pool.size", "send buffers in the global pool");
+	_sendPoolEmptyMetric = Registry::CreateGauge("net.sendbuffer.pool.empty", "times the global send buffer pool was empty");
+	_sendPoolAcquireMetric = Registry::CreateGauge("net.sendbuffer.acquires", "acquired send buffers");
+	_sendPoolReleaseMetric = Registry::CreateGauge("net.sendbuffer.releases", "released send buffers");
 }
 
 bool IOCP::ClientInit(psh::uint16 maxRunningThread
@@ -441,7 +469,7 @@ bool IOCP::DisconnectSession(const SessionID sessionId)
 void IOCP::_onDisconnect(const SessionID sessionId, int wsaErrCode)
 {
     --_sessionCount;
-    ++_disconnectCount;
+    _disconnectMetric.Add();
 
     OnDisconnect(sessionId, wsaErrCode);
 }
@@ -504,167 +532,6 @@ void IOCP::SetSessionStaticKey(const SessionID id, const char staticKey)
 void IOCP::HandleInput()
 {
 
-}
-
-
-/*****************************
-			Monitor
-*****************************/
-
-psh::uint64 IOCP::GetAcceptCount() const
-{
-    return _acceptCount;
-}
-
-psh::uint64 IOCP::GetAcceptTps() const
-{
-    return _acceptTps;
-}
-
-psh::uint64 IOCP::GetRecvTps() const
-{
-    return _recvTps;
-}
-
-psh::uint64 IOCP::GetSendTps() const
-{
-    return _sendTps;
-}
-
-psh::int16 IOCP::GetSessionCount() const
-{
-    return _sessionCount;
-}
-
-psh::uint64 IOCP::GetPacketPoolSize() const
-{
-    return _packetPoolSize;
-}
-
-psh::uint32 IOCP::GetPacketPoolEmptyCount() const
-{
-    return _packetPoolEmpty;
-}
-
-psh::uint64 IOCP::GetTimeoutCount() const
-{
-    return _timeoutSessions;
-}
-
-psh::uint32 IOCP::GetPacketPoolAcquireCount()
-{
-    return SendBufferImpl::_pool.GetAcquireCount();
-}
-
-psh::uint32 IOCP::GetPacketPoolReleaseCount()
-{
-    return SendBufferImpl::_pool.GetReleaseCount();
-}
-
-psh::uint64 IOCP::GetDisconnectCount() const
-{
-    return _disconnectCount;
-}
-
-psh::uint64 IOCP::GetDisconnectPerSec() const
-{
-    return _disconnectps;
-}
-
-psh::uint32 IOCP::GetSemaphoreTimeoutCount() const
-{
-    return _tcpSemaphoreTimeout;
-}
-
-size_t IOCP::GetPageFaultCount() const
-{
-    return _memMonitor->GetPageFaultCount();
-}
-
-size_t IOCP::GetPeakPMemSize() const
-{
-    return _memMonitor->GetPeakPMemSize();
-}
-
-size_t IOCP::GetPMemSize() const
-{
-    return _memMonitor->GetPMemSize();
-}
-
-size_t IOCP::GetPeakVirtualMemSize() const
-{
-    return _memMonitor->GetPeakVirtualMemSize();
-}
-
-size_t IOCP::GetVirtualMemSize() const
-{
-    return _memMonitor->GetVirtualMemSize();
-}
-
-size_t IOCP::GetPeakPagedPoolUsage() const
-{
-    return _memMonitor->GetPeakPagedPoolUsage();
-}
-
-size_t IOCP::GetPeakNonPagedPoolUsage() const
-{
-    return _memMonitor->GetPeakNonPagedPoolUsage();
-}
-
-size_t IOCP::GetPagedPoolUsage() const
-{
-    return _memMonitor->GetPagedPoolUsage();
-}
-
-size_t IOCP::GetNonPagedPoolUsage() const
-{
-    return _memMonitor->GetNonPagedPoolUsage();
-}
-
-String IOCP::GetLibMonitorString() const
-{
-    return std::format(L"==================================================================================\n"
-                       L" {:<11s}{:^55s}{:>11s}\n"
-                       L"----------------------------------------------------------------------------------\n"
-                       L"+  {:<14s} : {:>6.2f}MB / {:<6.2f}MB | {:<14s} : {:>6.2f}MB / {:<6.2f}MB \n"
-                       L"+  {:<14s} : {:>6.2f}%% / {:<6.2f}%%  |\n"
-                       L"+  {:<14s} : {:>6.2f}%% / {:<6.2f}%%  |  {:<14s} : {:>6.2f}%% / {:<6.2f}%%  \n"
-                       L"----------------------------------------------------------------------------------\n"
-                       L"+  {:<14s} : {:>10d}\n"
-                       L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       //L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       //L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       //L"+  {:<14s} : {:>10d}, {:<14s} : {:>10d}\n"
-                       L"----------------------------------------------------------------------------------\n"
-                       , L"+++++", L"LIBS", L"+++++"
-                       , L"VirtualMem", GetVirtualMemSize() / 1000'000., GetPeakVirtualMemSize() / 1000'000.
-                       , L"PhysicalMem", GetPMemSize() / 1000'000., GetPeakPMemSize() / 1000'000.
-                       , L"TotalCPU", _cpuMonitor->ProcessTotal(), _cpuMonitor->ProcessorTotal()
-                       , L"KernelCPU", _cpuMonitor->ProcessKernel(), _cpuMonitor->ProcessorKernel()
-                       , L"UserCPU", _cpuMonitor->ProcessUser(), _cpuMonitor->ProcessorUser()
-                       , L"Sessions", GetSessionCount()
-                       , L"Accept", GetAcceptCount(), L"AcceptTPS", GetAcceptTps()
-                       , L"RecvTPS", GetRecvTps(), L"SendTPS", GetSendTps()
-                       , L"Disconnect", GetDisconnectCount(), L"DisconnectTPS", GetDisconnectPerSec()
-                       , L"SegmentTimeout", GetSemaphoreTimeoutCount(), L"Timeout", GetTimeoutCount()
-                       , L"GSendPool", SendBufferImpl::_pool.GetGPoolSize(), L"GSendPoolEmpty"
-                       , SendBufferImpl::_pool.GetGPoolEmptyCount()
-                       //, L"GRecvPool", RecvBuffer::_pool.GetGPoolSize(), L"GRecvPoolEmpty", RecvBuffer::_pool.GetGPoolEmptyCount()
-                       , L"SendPoolAcq", SendBufferImpl::_pool.GetAcquireCount(), L"SendPoolRel"
-                       , SendBufferImpl::_pool.GetReleaseCount()
-                       //, L"RecvPoolAcq", RecvBuffer::_pool.GetAcquireCount(), L"RecvPoolRel", RecvBuffer::_pool.GetReleaseCount()
-                       //,L"SendPoolGap", SendBufferImpl::_pool.GetAcquireCount()- SendBufferImpl::_pool.GetReleaseCount(),L"RecvPoolGap", RecvBuffer::_pool.GetAcquireCount() - RecvBuffer::_pool.GetReleaseCount()
-    );
-}
-
-void IOCP::PrintMonitorString() const
-{
-    fmt::print("{}", psh::util::WToS(GetLibMonitorString()));
 }
 
 
@@ -742,7 +609,7 @@ void IOCP::AcceptThread()
             continue;
         }
 
-        _acceptCount++;
+        _acceptMetric.Add();
 
 
         clientSocket.SetLinger(true);
@@ -777,19 +644,24 @@ void IOCP::MonitorThread()
     while (_isRunning)
     {
         {
-            _acceptTps = _acceptCount - _oldAccepCount;
-            _oldAccepCount = _acceptCount;
-            _disconnectps = _disconnectCount - _oldDisconnect;
-            _oldDisconnect = _disconnectCount;
-            _recvTps = _recvCount.exchange(0);
-            _sendTps = _sendCount.exchange(0);
-            _packetPoolSize = SendBufferImpl::_pool.GetGPoolSize();
-            _packetPoolEmpty = SendBufferImpl::_pool.GetGPoolEmptyCount();
-
             _memMonitor->Update();
-            _cpuMonitor->UpdateCpuTime();
+            _virtualMemMetric.Set(static_cast<psh::int64>(_memMonitor->GetVirtualMemSize()));
+            _peakVirtualMemMetric.Set(static_cast<psh::int64>(_memMonitor->GetPeakVirtualMemSize()));
+            _physicalMemMetric.Set(static_cast<psh::int64>(_memMonitor->GetPMemSize()));
+            _peakPhysicalMemMetric.Set(static_cast<psh::int64>(_memMonitor->GetPeakPMemSize()));
 
-            OnMonitorRun();
+            _cpuMonitor->UpdateCpuTime();
+            _processCpuMetric.Set(_cpuMonitor->ProcessTotal());
+            _processKernelCpuMetric.Set(_cpuMonitor->ProcessKernel());
+            _processUserCpuMetric.Set(_cpuMonitor->ProcessUser());
+            _systemCpuMetric.Set(_cpuMonitor->ProcessorTotal());
+            _systemKernelCpuMetric.Set(_cpuMonitor->ProcessorKernel());
+            _systemUserCpuMetric.Set(_cpuMonitor->ProcessorUser());
+
+            _sendPoolMetric.Set(static_cast<psh::int64>(SendBufferImpl::_pool.GetGPoolSize()));
+            _sendPoolEmptyMetric.Set(static_cast<psh::int64>(SendBufferImpl::_pool.GetGPoolEmptyCount()));
+            _sendPoolAcquireMetric.Set(static_cast<psh::int64>(SendBufferImpl::_pool.GetAcquireCount()));
+            _sendPoolReleaseMetric.Set(static_cast<psh::int64>(SendBufferImpl::_pool.GetReleaseCount()));
         }
 
 
@@ -823,7 +695,7 @@ void IOCP::TimeoutThread()
                 {
                     OnSessionTimeout(session.GetSessionId(), result.value());
                     session.ResetTimeoutWait();
-                    _timeoutSessions++;
+                    _timeoutMetric.Add();
                 }
             }
         }
@@ -846,7 +718,7 @@ void IOCP::IncreaseRecvCount(const int value)
         ++localRecvCount;
         if (localRecvCount == 100)
         {
-            _recvCount.fetch_add(100);
+            _recvPacketMetric.Add(100);
             localRecvCount = 0;
         }
     }
@@ -860,7 +732,7 @@ void IOCP::increaseSendCount(const int value)
         ++localSendCount;
         if (localSendCount == 100)
         {
-            _sendCount.fetch_add(100);
+            _sendPacketMetric.Add(100);
             localSendCount = 0;
         }
     }

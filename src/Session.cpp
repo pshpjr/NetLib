@@ -113,7 +113,7 @@ void Session::SetSocket(Socket&& socket)
                                L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
                                L"sendWait : %d recvWait : %d, errNo : %d",
                                GetSessionId(), type, sendWait, recvWait, errNo);
-                ++_owner->_tcpSemaphoreTimeout;
+                _owner->_semaphoreTimeoutMetric.Add();
                 break;
             }
 
@@ -210,7 +210,7 @@ void Session::SetSocket(Socket&& socket)
                                L"SemaphoreTimeout  sessionID : %d, executableType : %s, "
                                L"sendWait : %d recvWait : %d, errNo : %d",
                                GetSessionId(), type, sendWait, recvWait, errNo);
-                ++_owner->_tcpSemaphoreTimeout;
+                _owner->_semaphoreTimeoutMetric.Add();
                 break;
             }
 

@@ -52,6 +52,7 @@ GroupID GroupManager::CreateGroup(Args&&... args)
     newGroup->_groupId = GroupID::NextID();
     newGroup->_iocp = _owner;
     newGroup->_owner = this;
+    newGroup->InitMetrics();
 
     newGroup->OnCreate();
     {
