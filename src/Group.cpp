@@ -244,6 +244,12 @@ void Group::onRecvPacket(const Session& session, RecvBuffer& buffer)
 		_iocp->DisconnectSession(session.GetSessionId());
 		_groupLogger->Write(L"Recv Pop Err", Logger::LogLevel::Debug, L"ERR");
 	}
+	catch (const std::exception& e)
+	{
+		_iocp->DisconnectSession(session.GetSessionId());
+		_groupLogger->Write(L"Recv Exception", Logger::LogLevel::Error, L"sessionID : %d, group : %d, error : %s",
+		                    session.GetSessionId(), _groupId, e.what());
+	}
 }
 
 // 해당 세션이 언제 나갈지 모르는데 상관 없나?
