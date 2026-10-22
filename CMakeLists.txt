@@ -39,6 +39,10 @@ add_library(NetLib STATIC
         src/LockStack.cpp
         src/MemoryPool.cpp
         src/MemoryUsage.cpp
+        src/MetricHandles.cpp
+        src/MetricHistogram.cpp
+        src/MetricRegistry.cpp
+        src/MetricsConsoleExporter.cpp
         src/MultiThreadMemoryPool.cpp
         src/NormalIOCP.cpp
         src/ProcessMonitor.cpp
@@ -122,6 +126,25 @@ if(NETLIB_ENABLE_TRACY)
     find_package(Tracy CONFIG REQUIRED)
     target_compile_definitions(NetLib PUBLIC NETLIB_ENABLE_TRACY)
     target_link_libraries(NetLib PUBLIC Tracy::TracyClient)
+endif()
+
+# Recording compiles out when OFF; the public macro must match consumers.
+option(NETLIB_ENABLE_METRICS "Record metrics through psh::metrics" ON)
+if(NETLIB_ENABLE_METRICS)
+    target_compile_definitions(NetLib PUBLIC NETLIB_ENABLE_METRICS)
+endif()
+
+# Only the exporter source sees OpenTelemetry headers, so the dependency stays private.
+option(NETLIB_ENABLE_OTEL "Enable the OTLP/HTTP metric exporter" OFF)
+if(NETLIB_ENABLE_OTEL)
+    find_package(opentelemetry-cpp CONFIG REQUIRED)
+    target_sources(NetLib PRIVATE src/MetricsOtlpExporter.cpp)
+    target_compile_definitions(NetLib PRIVATE NETLIB_ENABLE_OTEL)
+    target_link_libraries(NetLib PRIVATE
+            opentelemetry-cpp::otlp_http_metric_exporter
+            opentelemetry-cpp::metrics
+            opentelemetry-cpp::resources
+    )
 endif()
 
 find_package(fmt CONFIG REQUIRED)
