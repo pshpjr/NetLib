@@ -132,16 +132,21 @@ void IoUring::FlushPendingRequest()
         std::memcpy(GetRingSqe(), &src, sizeof(src));
     working_.clear();
 
-    while (io_uring_sq_ready(&ioUring_) != 0)
+    //  소켓 버퍼에 여유가 있으면 sendmsg·recvmsg가 제출 안에서 바로 실행된다.
     {
-        const auto ret = io_uring_submit(&ioUring_);
-        if (ret <= 0)
-            throw std::runtime_error("Failed to submit io_uring requests");
+        PRO_BEGIN("IoUring::Submit");
+        while (io_uring_sq_ready(&ioUring_) != 0)
+        {
+            const auto ret = io_uring_submit(&ioUring_);
+            if (ret <= 0)
+                throw std::runtime_error("Failed to submit io_uring requests");
+        }
     }
 }
 
 void IoUring::Loop()
 {
+    PRO_THREAD("io_uring");
     RegisterRead();
 
     //  cqe를 수집해서 한 번에 done_에 넣기 위한 임시벡터
@@ -186,6 +191,7 @@ void IoUring::PrepareWait()
 
 void IoUring::WaitCompletion()
 {
+    PRO_BEGIN("IoUring::WaitCompletion");
     io_uring_cqe* cqe = nullptr;
     const auto ret = io_uring_wait_cqe(&ioUring_, &cqe);
 
