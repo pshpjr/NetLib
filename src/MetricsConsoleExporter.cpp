@@ -14,9 +14,14 @@ namespace psh::metrics
         {
         case Unit::Microseconds:
             return {"s", "us", 1e-6};
+        case Unit::Bytes:
+            return {"By", "B", 1.0};
+        case Unit::Percent:
+            return {"%", "%", 1.0};
         case Unit::None:
         default:
-            return {"1", "", 1.0};
+            //  "1"로 보내면 Prometheus가 게이지 이름에 _ratio를 붙인다.
+            return {"", "", 1.0};
         }
     }
 
@@ -90,6 +95,12 @@ namespace psh::metrics
             {
                 AppendName(info);
                 fmt::format_to(std::back_inserter(_out), " {}{}\n", value, GetUnitInfo(info.unit).displaySuffix);
+            }
+
+            void WriteGauge(const MetricInfo& info, const double value) override
+            {
+                AppendName(info);
+                fmt::format_to(std::back_inserter(_out), " {:.2f}{}\n", value, GetUnitInfo(info.unit).displaySuffix);
             }
 
             void WriteHistogram(const MetricInfo& info, std::span<const uint64> counts, const int64 sum) override

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <mutex>
 #include <semaphore>
 #include <thread>
@@ -129,12 +130,26 @@ namespace psh::metrics
         });
     }
 
-    Gauge Registry::CreateGauge(std::string_view name, std::string_view description, Attributes attributes)
+    Gauge Registry::CreateGauge(std::string_view name, std::string_view description, Attributes attributes,
+                                const Unit unit)
     {
         return AddSeries<Gauge>({
             .name = std::string(name),
             .description = std::string(description),
             .type = MetricType::Gauge,
+            .unit = unit,
+            .attributes = std::move(attributes),
+        });
+    }
+
+    DoubleGauge Registry::CreateDoubleGauge(std::string_view name, std::string_view description,
+                                            Attributes attributes, const Unit unit)
+    {
+        return AddSeries<DoubleGauge>({
+            .name = std::string(name),
+            .description = std::string(description),
+            .type = MetricType::DoubleGauge,
+            .unit = unit,
             .attributes = std::move(attributes),
         });
     }
@@ -293,6 +308,21 @@ namespace psh::metrics
             static inline std::mutex _instanceLock;
             static inline std::unique_ptr<ExportRunner> _instance;
         };
+    }
+
+    Config ConfigFromEnv(const std::string_view serviceName)
+    {
+        Config config{.serviceName = std::string(serviceName)};
+        if (const char* endpoint = std::getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"))
+        {
+            config.useOtlp = true;
+            config.otlpEndpoint = endpoint;
+        }
+
+        if (const char* host = std::getenv("HOSTNAME"))
+            config.serviceInstanceId = host;
+
+        return config;
     }
 
     //  오류 문자열은 std::string으로 감싸야 한다. const char*는 bool 생성자로 변환된다.

@@ -49,7 +49,7 @@ namespace psh::metrics
         };
 #endif
 
-        //  지연 시간용 기본 경계. 1us ~ 1s
+        //  지연 시간용 기본 경계. 1us ~ 10s
         static Bounds LatencyUsBounds();
 
         Histogram() = default;

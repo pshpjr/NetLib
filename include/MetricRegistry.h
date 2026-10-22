@@ -23,7 +23,11 @@ namespace psh::metrics
         //  잘못된 이름이나 같은 이름의 다른 종류·경계 등록은 빈 핸들을 돌려주고 기록을 무시한다.
         static Counter CreateCounter(std::string_view name, std::string_view description, Attributes attributes = {});
 
-        static Gauge CreateGauge(std::string_view name, std::string_view description, Attributes attributes = {});
+        static Gauge CreateGauge(std::string_view name, std::string_view description, Attributes attributes = {},
+                                 Unit unit = Unit::None);
+
+        static DoubleGauge CreateDoubleGauge(std::string_view name, std::string_view description,
+                                             Attributes attributes = {}, Unit unit = Unit::None);
 
         //  µs로 기록하고 초로 내보낸다. 경계는 Histogram::LatencyUsBounds()다.
         static Histogram CreateTimeHistogram(std::string_view name, std::string_view description,
@@ -67,6 +71,10 @@ namespace psh::metrics
         //  배포 시 실수 방지용
         bool requireOtlp = false;
     };
+
+    //  OTel 표준 환경 변수 OTEL_EXPORTER_OTLP_METRICS_ENDPOINT가 있으면 OTLP를 켠다.
+    //  HOSTNAME은 service.instance.id가 된다. 컨테이너에서는 컨테이너 ID다.
+    Config ConfigFromEnv(std::string_view serviceName);
 
     //  exporter를 만들고 내보내기 스레드를 시작한다. 실패하면 이유를 Error()로 돌려준다.
     Result<std::string> Init(const Config& config);

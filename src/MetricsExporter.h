@@ -22,6 +22,7 @@ namespace psh::metrics
         virtual void Begin(SystemClock::TimePoint start, SystemClock::TimePoint now) = 0;
         virtual void WriteCounter(const MetricInfo& info, uint64 value) = 0;
         virtual void WriteGauge(const MetricInfo& info, int64 value) = 0;
+        virtual void WriteGauge(const MetricInfo& info, double value) = 0;
         //  counts는 info.bounds.size() + 1개. 마지막은 +Inf 버킷이다.
         virtual void WriteHistogram(const MetricInfo& info, std::span<const uint64> counts, int64 sum) = 0;
         virtual void Flush() = 0;

@@ -183,6 +183,17 @@ namespace psh::metrics
                 AddPoint(info, sdkmetrics::InstrumentType::kObservableGauge, ValueType(scale), gauge);
             }
 
+            void WriteGauge(const MetricInfo& info, const double value) override
+            {
+                sdkmetrics::LastValuePointData gauge;
+                gauge.is_lastvalue_valid_ = true;
+                gauge.sample_ts_ = _now;
+                gauge.value_ = value * GetUnitInfo(info.unit).toExported;
+
+                AddPoint(info, sdkmetrics::InstrumentType::kObservableGauge, sdkmetrics::InstrumentValueType::kDouble,
+                         gauge);
+            }
+
             void WriteHistogram(const MetricInfo& info, std::span<const uint64> counts, const int64 sum) override
             {
                 const double scale = GetUnitInfo(info.unit).toExported;

@@ -28,6 +28,7 @@ namespace psh::metrics
     {
         Counter,
         Gauge,
+        DoubleGauge,
         CallbackGauge,
         Histogram,
     };
@@ -37,6 +38,8 @@ namespace psh::metrics
     {
         None,
         Microseconds,
+        Bytes,
+        Percent,
     };
 
     //  등록한 계측기의 정보. 같은 이름이면 type, unit, bounds가 같아야 한다.
@@ -93,6 +96,28 @@ namespace psh::metrics
 
         void SetImpl(int64 value) const;
         void AddImpl(int64 delta) const;
+
+        Storage* _storage = nullptr;
+    };
+
+    //  CPU 사용률처럼 소수인 값에 사용한다.
+    class DoubleGauge
+    {
+        friend class Registry;
+
+    public:
+        struct Storage;
+
+        DoubleGauge() = default;
+
+        void Set(double value) const { if constexpr (Enabled) { SetImpl(value); } }
+
+        [[nodiscard]] const MetricInfo* Info() const;
+
+    private:
+        explicit DoubleGauge(Storage* storage);
+
+        void SetImpl(double value) const;
 
         Storage* _storage = nullptr;
     };

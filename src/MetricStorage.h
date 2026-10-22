@@ -49,6 +49,18 @@ namespace psh::metrics
         std::atomic<int64> value{0};
     };
 
+    struct DoubleGauge::Storage : StorageBase
+    {
+        using StorageBase::StorageBase;
+
+        void WriteTo(Exporter& exporter) const override
+        {
+            exporter.WriteGauge(info, value.load(std::memory_order_relaxed));
+        }
+
+        std::atomic<double> value{0};
+    };
+
     struct CallbackGauge::Storage : StorageBase
     {
         Storage(MetricInfo info, std::function<int64()> callback)

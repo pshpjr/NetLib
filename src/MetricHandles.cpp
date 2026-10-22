@@ -59,6 +59,28 @@ namespace psh::metrics
     }
 
     /////////////////////
+    //      DoubleGauge
+    /////////////////////
+
+    DoubleGauge::DoubleGauge(Storage* storage)
+        : _storage(storage)
+    {
+    }
+
+    void DoubleGauge::SetImpl(const double value) const
+    {
+        if (_storage == nullptr)
+            return;
+
+        _storage->value.store(value, std::memory_order_relaxed);
+    }
+
+    const MetricInfo* DoubleGauge::Info() const
+    {
+        return _storage != nullptr ? &_storage->info : nullptr;
+    }
+
+    /////////////////////
     //      CallbackGauge
     /////////////////////
 
