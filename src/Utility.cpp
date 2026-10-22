@@ -12,6 +12,7 @@
 #include <system_error>
 #include <cstring>
 #include <bit>
+#include <cctype>
 
 #if defined(__linux__) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE 1
@@ -96,6 +97,34 @@ std::u16string psh::util::Utf8ToUtf16(std::string_view text)
     if (!bytes.empty())
         std::memcpy(result.data(), bytes.data(), bytes.size());
     return result;
+}
+
+std::string_view psh::util::Trim(std::string_view text)
+{
+    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())))
+    {
+        text.remove_prefix(1);
+    }
+    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())))
+    {
+        text.remove_suffix(1);
+    }
+    return text;
+}
+
+std::vector<std::string_view> psh::util::Split(std::string_view text, const char separator)
+{
+    std::vector<std::string_view> result;
+    while (true)
+    {
+        const auto pos = text.find(separator);
+        result.push_back(Trim(text.substr(0, pos)));
+        if (pos == std::string_view::npos)
+        {
+            return result;
+        }
+        text.remove_prefix(pos + 1);
+    }
 }
 
 std::uint32_t psh::util::GetCurrentThreadId() noexcept

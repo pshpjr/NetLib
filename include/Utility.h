@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 #include <cstdint>
 
@@ -24,6 +25,11 @@ namespace psh::util
     std::wstring SToW(std::string_view str);
     std::string Utf16ToUtf8(std::u16string_view text);
     std::u16string Utf8ToUtf16(std::string_view text);
+
+    //  앞뒤 공백 제거
+    std::string_view Trim(std::string_view text);
+    //  구분자로 나누고 각 조각의 앞뒤 공백을 제거한다. 빈 조각도 결과에 포함된다.
+    std::vector<std::string_view> Split(std::string_view text, char separator);
 
     void SetThreadName(const char *threadName);
 
