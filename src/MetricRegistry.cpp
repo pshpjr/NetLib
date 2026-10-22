@@ -353,6 +353,9 @@ namespace psh::metrics
         if (useConsole)
             exporters.push_back(CreateConsoleExporter(config));
 
+        if (config.useConsoleMonitor)
+            exporters.push_back(CreateConsoleMonitorExporter(config));
+
         if (exporters.empty())
             return true;
 

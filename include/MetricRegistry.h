@@ -58,8 +58,10 @@ namespace psh::metrics
         std::string environment;
         Attributes resourceAttributes;
 
-        //  둘 다 끄면 기록만 하고 내보내지 않는다.
+        //  모두 끄면 기록만 하고 내보내지 않는다.
+        //  useConsole은 모든 메트릭을, useConsoleMonitor는 NetLib 메트릭을 기존 모니터 형식으로 출력한다.
         bool useConsole = false;
+        bool useConsoleMonitor = false;
         bool useOtlp = false;
 
         std::string otlpEndpoint = "http://localhost:4318/v1/metrics";

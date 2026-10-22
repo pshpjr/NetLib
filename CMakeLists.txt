@@ -43,6 +43,7 @@ add_library(NetLib STATIC
         src/MetricHistogram.cpp
         src/MetricRegistry.cpp
         src/MetricsConsoleExporter.cpp
+        src/MetricsConsoleMonitorExporter.cpp
         src/MultiThreadMemoryPool.cpp
         src/NormalIOCP.cpp
         src/ProcessMonitor.cpp

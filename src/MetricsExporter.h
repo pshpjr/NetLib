@@ -36,6 +36,9 @@ namespace psh::metrics
 
     ExporterPtr CreateConsoleExporter(const Config& config);
 
+    //  NetLib 메트릭을 기존 콘솔 모니터 형식으로 출력한다.
+    ExporterPtr CreateConsoleMonitorExporter(const Config& config);
+
 #ifdef NETLIB_ENABLE_OTEL
     //  OTel 타입은 MetricsOtlpExporter.cpp 밖으로 나오지 않는다.
     ExporterPtr CreateOtlpExporter(const Config& config);
