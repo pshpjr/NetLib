@@ -17,11 +17,7 @@
 #include <mutex>
 #include <unordered_map>
 
-/*
-    SDK의 MeterProvider·계측기를 사용하지 않는다. 동기 계측기는 기록마다 속성 해시와 저장소 잠금을 거치기 때문이다.
-    Registry가 집계한 누적값을 SDK 데이터 구조로 옮겨 OTLP/HTTP exporter에 직접 전달한다.
-    otel-cpp를 올릴 때 이 파일만 확인하면 되도록 SDK 타입은 이 파일 밖으로 노출하지 않는다.
- */
+
 namespace psh::metrics
 {
     namespace
@@ -32,10 +28,7 @@ namespace psh::metrics
 
         namespace internal_log = opentelemetry::sdk::common::internal_log;
 
-        /// <summary>
-        /// 같은 위치의 OTel 내부 로그는 주기마다 한 번만 출력한다.
-        /// 수집기가 꺼져 있으면 내보낼 때마다 연결 실패 로그가 찍히기 때문이다. 생략한 횟수는 다음 출력에 붙인다.
-        /// </summary>
+
         class RateLimitedLogHandler final : public internal_log::LogHandler
         {
         public:
@@ -93,7 +86,6 @@ namespace psh::metrics
             std::map<std::pair<std::string_view, int>, Entry> _entries;
         };
 
-        //  사용자가 직접 설정한 핸들러는 건드리지 않는다. 기본 핸들러일 때만 교체한다.
         void InstallLogHandler()
         {
             const auto current = internal_log::GlobalLogHandler::GetLogHandler();
@@ -242,7 +234,6 @@ namespace psh::metrics
                 return scale == 1.0 ? sdkmetrics::InstrumentValueType::kLong : sdkmetrics::InstrumentValueType::kDouble;
             }
 
-            //  OTLP에서는 이름 하나가 계측기 하나이고, 속성 조합마다 포인트를 하나씩 가진다.
             void AddPoint(const MetricInfo& info, const sdkmetrics::InstrumentType type,
                           const sdkmetrics::InstrumentValueType valueType, sdkmetrics::PointType point)
             {
@@ -260,7 +251,6 @@ namespace psh::metrics
                 _metrics[found->second].point_data_attr_.push_back({ToPointAttributes(info.attributes), point});
             }
 
-            //  수집기가 꺼져 있어도 로그가 넘치지 않도록 상태가 바뀔 때만 출력한다.
             void ReportResult(const sdk::common::ExportResult result)
             {
                 const bool success = result == sdk::common::ExportResult::kSuccess;
